@@ -2,26 +2,42 @@
 #define Tile_h
 #include <Arduino.h>
 #include <Adafruit_NeoPixel.h>
+#define NUM_PIXELS 61
 
 class Tile
 {
+enum LEDsections : byte {
+  TOP_HALF,
+  BOTTOM_HALF,
+  LEFT_HALF,
+  RIGHT_HALF,
+  CENTRE_LINE,
+  TOP_LEFT,
+  TOP_RIGHT,
+  BOTTOM_RIGHT,
+  BOTTOM_LEFT
+};
+
   public:
   Tile();
   Tile(int pin);
-  Adafruit_NeoPixel Strip();
+  Adafruit_NeoPixel& Strip();
   void SetColour();
 
   void begin();
   void setColour(uint32_t c);
   void light();
+  void lightPartially(LEDsections section);
   void clear();
   bool isPressed();
   int getToeSensor();
   int getHeelSensor();
-  Adafruit_NeoPixel strip;
+
+
+  //Different sections of Tiles
   private:
 
-
+  Adafruit_NeoPixel strip;
   int _led_count;
   int _pin;
   int _toeSensor;

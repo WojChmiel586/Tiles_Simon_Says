@@ -4,11 +4,11 @@
 Tile::Tile(){};
 Tile::Tile(int pin)
 {
-  strip = Adafruit_NeoPixel(61, pin, NEO_GRB + NEO_KHZ800);
+  strip = Adafruit_NeoPixel(NUM_PIXELS, pin, NEO_GRB + NEO_KHZ800);
   _pin = pin;
 }
 
-Adafruit_NeoPixel Tile::Strip()
+Adafruit_NeoPixel& Tile::Strip()
 {
   return strip;
 }
@@ -31,11 +31,48 @@ void Tile::light()
     strip.show();
 }
 
+void Tile::lightPartially(LEDsections section)
+{
+  clear();
+  switch (section) 
+  {
+  case TOP_HALF:
+  
+  break;
+  case BOTTOM_HALF:
+
+  break;
+  case LEFT_HALF:
+
+  break;
+  case RIGHT_HALF:
+
+  break;
+  case CENTRE_LINE:
+
+  break;
+  case TOP_LEFT:
+
+  break;
+  case TOP_RIGHT:
+
+  break;
+  case BOTTOM_RIGHT:
+
+  break;
+  case BOTTOM_LEFT:
+
+  break;
+  default:
+
+  break;
+  }
+
+}
 void Tile::clear() 
 {
-    for (int i = 0; i < strip.numPixels(); i++)
-    strip.setPixelColor(i, 0);
-    strip.show();
+  strip.clear();
+  strip.show();
 }
 
 bool Tile::isPressed() 

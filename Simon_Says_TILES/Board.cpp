@@ -12,7 +12,7 @@ void Board::assignColours() {
     for (int i = 0; i < TILE_COUNT; i++) 
     {
         uint16_t hue = (i * 65536UL) / TILE_COUNT;
-        tiles[i].setColour(tiles[i].strip.ColorHSV(hue, 255, 255));
+        tiles[i].setColour(tiles[i].Strip().ColorHSV(hue, 255, 255));
     }
 }
 
