@@ -6,21 +6,28 @@
 class Tile
 {
   public:
+  Tile();
   Tile(int pin);
-  ~Tile();
   Adafruit_NeoPixel Strip();
   void SetColour();
+
+  void begin();
+  void setColour(uint32_t c);
+  void light();
+  void clear();
+  bool isPressed();
+  int getToeSensor();
+  int getHeelSensor();
+  Adafruit_NeoPixel strip;
   private:
 
-  Adafruit_NeoPixel _strip;
+
   int _led_count;
   int _pin;
   int _toeSensor;
   int _heelSensor;
+  int threshold = 400;
+  uint32_t colour = 0;
 
 };
-
-
-// the #include statement and code go here...
-
 #endif

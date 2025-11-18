@@ -1,9 +1,12 @@
 #include <Arduino.h>
 #include <Adafruit_NeoPixel.h>
 #include "Tile.h"
+#include "Board.h"
 #define PIN_NEO_PIXEL 17  // The ESP32 pin GPIO17 connected to NeoPixel-example
 #define NUM_PIXELS 61     // The number of LEDs (pixels) on NeoPixel
 
+
+Board board;
 Adafruit_NeoPixel strip1 = Adafruit_NeoPixel(61, 9, NEO_GRB + NEO_KHZ800);
 Adafruit_NeoPixel strip2 = Adafruit_NeoPixel(61, 15, NEO_GRB + NEO_KHZ800);
 Adafruit_NeoPixel strip3 = Adafruit_NeoPixel(61, 38, NEO_GRB + NEO_KHZ800);
@@ -149,7 +152,8 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
 }
 
 // callback function that will be executed when data is received
-void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
+void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) 
+{
   memcpy(&myData, incomingData, sizeof(myData));
   airtime = myData.t;
   buttonInput = myData.b;
