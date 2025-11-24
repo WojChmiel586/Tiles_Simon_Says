@@ -1,7 +1,7 @@
 #include "Arduino.h"
 #include "Tile.h"
 
-Tile::Tile(){};
+Tile::Tile() : strip(){};
 Tile::Tile(int pin)
 {
   strip = Adafruit_NeoPixel(NUM_PIXELS, pin, NEO_GRB + NEO_KHZ800);
@@ -27,8 +27,10 @@ void Tile::setColour(uint32_t c)
 void Tile::light()
 {
  for (int i = 0; i < strip.numPixels(); i++)
+ {
     strip.setPixelColor(i, colour);
     strip.show();
+ }
 }
 
 void Tile::lightPartially(LEDsections section)
@@ -75,19 +77,25 @@ void Tile::clear()
   strip.show();
 }
 
+void Tile::setSensors(int toeVal, int heelVal)
+{
+  _toeSensor = toeVal;
+  _heelSensor = heelVal;
+}
+
 bool Tile::isPressed() 
 {
-    int a = analogRead(_toeSensor);
-    int b = analogRead(_heelSensor);
+    int a = _toeSensor;
+    int b = _heelSensor;
     return (a > threshold || b > threshold);
 }
 
 int Tile::getToeSensor() 
 {
-    return analogRead(_toeSensor);
+    return _toeSensor;
 }
 
 int Tile::getHeelSensor() 
 {
-    return analogRead(_heelSensor);
+    return _heelSensor;
 }

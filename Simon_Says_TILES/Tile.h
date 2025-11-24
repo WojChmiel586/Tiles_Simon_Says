@@ -30,6 +30,7 @@ enum LEDsections : byte {
   void lightPartially(LEDsections section);
   void clear();
   bool isPressed();
+  void setSensors(int toeVal, int heelVal);
   int getToeSensor();
   int getHeelSensor();
 
