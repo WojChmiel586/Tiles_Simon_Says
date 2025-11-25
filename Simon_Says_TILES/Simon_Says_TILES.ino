@@ -10,18 +10,11 @@
 #define NUM_PIXELS 61     // The number of LEDs (pixels) on NeoPixel
 
 int ledPins[16] = {9,15,38,42,10,16,37,41,11,17,36,40,12,18,35,39};
-
+int lastHitTile = -1;
 Board board;
 
 // Structure for data
 struct_message_all myData;
-
-// struct_message_all ESP1;
-// struct_message_all ESP2;
-// struct_message_all ESP3;
-// struct_message_all ESP4;
-// struct_message_all ESP6;
-// struct_message_all ESP7;
 
 volatile bool newDataAvailable = false;
 struct_message_all boardsStructBack[7];
@@ -89,27 +82,12 @@ void OnDataRecv(const uint8_t * mac_addr, const uint8_t *incomingData, int len)
     {
     Serial.print("ERROR: Invalid board ID received: ");
     Serial.println(myData.id);
-    return;  // Don't process invalid data
+    return;
     }
   boardsStructBack[idx] = myData;
 
   newDataAvailable = true;
-
-  // boardsStruct[idx].t = myData.t;
-  // boardsStruct[idx].b = myData.b;
-  // boardsStruct[idx].jc = myData.jc;
-  // boardsStruct[idx].js = myData.js;
-  // boardsStruct[idx].sd = myData.sd;
-  // boardsStruct[idx].dA = myData.dA;
-  // boardsStruct[idx].dB = myData.dB;
-  // boardsStruct[idx].eA = myData.eA;
-  // boardsStruct[idx].eB = myData.eB;
-  // boardsStruct[idx].fA = myData.fA;
-  // boardsStruct[idx].fB = myData.fB;
-  // boardsStruct[idx].gA = myData.gA;
-  // boardsStruct[idx].gB = myData.gB;
 }
-
 enum : byte {
   Setup,
   Gameplay,
@@ -185,9 +163,25 @@ void loop() {
   {
     newDataAvailable = false;
     memcpy(boardsStructFront, boardsStructBack, sizeof(boardsStructBack));
+
+    board.updateFromESPNOW(boardsStructFront);
+
+    int pressedTile = board.pressedTile();
+
+    if (pressedTile != lastHitTile)
+    {
+      if (lastHitTile >= 0)
+      {
+        board.clear(lastHitTile);
+      }
+      if (pressedTile >= 0)
+      {
+        board.light(pressedTile);
+      }
+      lastHitTile = pressedTile;
+    }
   }
-  board.updateFromESPNOW(boardsStructFront);
-  board.light(board.pressedTile());
+
 
 
 }  //end of loop
