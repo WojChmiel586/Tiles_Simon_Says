@@ -1,6 +1,8 @@
 #pragma once
 #include "Tile.h"
 #include "ESPNowStruct.h"
+#include <vector>
+#include <memory>
 
 class Board {
 public:
@@ -19,7 +21,7 @@ public:
     void clear(int i);
     void clearAll();
 
-    Tile tiles[TILE_COUNT];
+    std::vector<std::unique_ptr<Tile>> tiles;
 
 private:
 };

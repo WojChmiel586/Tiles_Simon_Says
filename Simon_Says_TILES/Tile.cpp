@@ -1,22 +1,31 @@
 #include "Arduino.h"
 #include "Tile.h"
 
-Tile::Tile() : strip(){};
+Tile::Tile()
+{
+  strip = std::make_unique<Adafruit_NeoPixel>(0, 0, NEO_GRB + NEO_KHZ800);
+  _pin = 0;
+  _toeSensor = 0;
+  _heelSensor = 0;
+}
+
 Tile::Tile(int pin)
 {
-  strip = Adafruit_NeoPixel(NUM_PIXELS, pin, NEO_GRB + NEO_KHZ800);
+  strip = std::make_unique<Adafruit_NeoPixel>(NUM_PIXELS, pin, NEO_GRB + NEO_KHZ800);
   _pin = pin;
+  _toeSensor = 0;
+  _heelSensor = 0;
 }
 
 Adafruit_NeoPixel& Tile::Strip()
 {
-  return strip;
+  return *strip;
 }
 
 void Tile::begin()
 {
-  strip.begin();
-  strip.show();
+  strip->begin();
+  strip->show();
 }
 
 void Tile::setColour(uint32_t c)
@@ -26,11 +35,11 @@ void Tile::setColour(uint32_t c)
 
 void Tile::light()
 {
- for (int i = 0; i < strip.numPixels(); i++)
+ for (int i = 0; i < strip->numPixels(); i++)
  {
-    strip.setPixelColor(i, colour);
-    strip.show();
+    strip->setPixelColor(i, colour);
  }
+  strip->show();
 }
 
 void Tile::lightPartially(LEDsections section)
@@ -73,8 +82,8 @@ void Tile::lightPartially(LEDsections section)
 }
 void Tile::clear() 
 {
-  strip.clear();
-  strip.show();
+  strip->clear();
+  strip->show();
 }
 
 void Tile::setSensors(int toeVal, int heelVal)

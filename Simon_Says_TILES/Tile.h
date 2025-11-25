@@ -2,6 +2,9 @@
 #define Tile_h
 #include <Arduino.h>
 #include <Adafruit_NeoPixel.h>
+#include <memory>
+#include <vector>
+
 #define NUM_PIXELS 61
 
 class Tile
@@ -38,7 +41,7 @@ enum LEDsections : byte {
   //Different sections of Tiles
   private:
 
-  Adafruit_NeoPixel strip;
+  std::unique_ptr<Adafruit_NeoPixel> strip;
   int _led_count;
   int _pin;
   int _toeSensor;

@@ -16,34 +16,32 @@ Board board;
 // Structure for data
 struct_message_all myData;
 
-struct_message_all ESP1;
-struct_message_all ESP2;
-struct_message_all ESP3;
-struct_message_all ESP4;
-struct_message_all ESP6;
-struct_message_all ESP7;
+// struct_message_all ESP1;
+// struct_message_all ESP2;
+// struct_message_all ESP3;
+// struct_message_all ESP4;
+// struct_message_all ESP6;
+// struct_message_all ESP7;
 
 volatile bool newDataAvailable = false;
-struct_message_all boardsStructBack[6];
-struct_message_all boardsStructFront[6];
+struct_message_all boardsStructBack[7];
+struct_message_all boardsStructFront[7];
 
 //COLOURS REGION
 #pragma region 
-Adafruit_NeoPixel strip10;
-uint32_t lime = strip10.Color(105, 255, 10);    //not used for level
-uint32_t cyan = strip10.Color(0, 255, 255);     //used for level 1
-uint32_t blue = strip10.Color(0, 0, 255);       //used for  level 2
-uint32_t purple = strip10.Color(180, 25, 255);  //used for level 3
-uint32_t magenta = strip10.Color(255, 0, 255);  // used for level 4
-uint32_t orange = strip10.Color(255, 95, 30);   // used for level 5
-uint32_t left = strip10.Color(0, 255, 255);     //colour used for LEFT FOOT cyan
-uint32_t right = strip10.Color(255, 0, 255);    // colour used for RIGHT FOOT magenta
-
-uint32_t green = strip10.Color(0, 255, 0);      //used for goodJump
-uint32_t yellow = strip10.Color(255, 255, 0);   //used for partialJump
-uint32_t red = strip10.Color(255, 0, 0);        // used for badJump
-uint32_t white = strip10.Color(255, 255, 255);  // used for endJump
-uint32_t black = strip10.Color(0, 0, 0);        // used to switch off??
+uint32_t lime = 0x69FF0A;      // RGB: 105, 255, 10
+uint32_t cyan = 0x00FFFF;      // RGB: 0, 255, 255
+uint32_t blue = 0x0000FF;      // RGB: 0, 0, 255
+uint32_t purple = 0xB419FF;    // RGB: 180, 25, 255
+uint32_t magenta = 0xFF00FF;   // RGB: 255, 0, 255
+uint32_t orange = 0xFF5F1E;    // RGB: 255, 95, 30
+uint32_t left = 0x00FFFF;      // Cyan
+uint32_t right = 0xFF00FF;     // Magenta
+uint32_t green = 0x00FF00;     // RGB: 0, 255, 0
+uint32_t yellow = 0xFFFF00;    // RGB: 255, 255, 0
+uint32_t red = 0xFF0000;       // RGB: 255, 0, 0
+uint32_t white = 0xFFFFFF;     // RGB: 255, 255, 255
+uint32_t black = 0x000000;     // RGB: 0, 0, 0
 #pragma endregion
 
 //------------------------------------ESP NOW STUFF--------------------------------------------------------------------------------------//
@@ -78,10 +76,21 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status)
 // callback function that will be executed when data is received
 void OnDataRecv(const uint8_t * mac_addr, const uint8_t *incomingData, int len) 
 {
+  char macStr[18];
   // copy incoming into myData
   memcpy(&myData, incomingData, sizeof(myData));
+
+  Serial.print("Received ID: ");
+  Serial.println(myData.id);  // Check what IDs are actually coming in
+
   int idx = myData.id -1;
 
+    if (idx < 0 || idx >= 7) 
+    {
+    Serial.print("ERROR: Invalid board ID received: ");
+    Serial.println(myData.id);
+    return;  // Don't process invalid data
+    }
   boardsStructBack[idx] = myData;
 
   newDataAvailable = true;
@@ -114,70 +123,72 @@ enum : byte {
 // the setup routine runs once when you press reset:--------------------------------------------------
 void setup() 
 {
-  board.begin(ledPins);
-  board.assignColours();
-  board.clearAll();
+   // 1. Initialize Serial FIRST (for debugging)
+  Serial.begin(115200);
+  delay(100);  // Give serial time to initialize
+  Serial.println("\n\nStarting setup...");
 
-  Serial.begin(115200);            // Initialize Serial Monitor
-  WiFi.mode(WIFI_STA);             // Set device as a Wi-Fi Station
-
-  if (esp_now_init() != ESP_OK) 
-  {  // Init ESP-NOW
+  // 2. Initialize data structures
+  memset(boardsStructBack, 0, sizeof(boardsStructBack));
+  memset(boardsStructFront, 0, sizeof(boardsStructFront));
+  
+  // 3. Initialize WiFi BEFORE ESP-NOW
+  Serial.println("Initializing WiFi...");
+  WiFi.mode(WIFI_STA);
+  WiFi.disconnect();  // Ensure clean state
+  delay(100);
+  
+  // 4. Initialize ESP-NOW
+  Serial.println("Initializing ESP-NOW...");
+  if (esp_now_init() != ESP_OK) {
     Serial.println("Error initializing ESP-NOW");
     return;
   }
+  Serial.println("ESP-NOW initialized successfully");
 
-  // Once ESPNow is successfully Init, we will register for Send CB to
-  // get the status of Transmitted packet
+  // 5. Register callbacks
   esp_now_register_send_cb(OnDataSent);
+  esp_now_register_recv_cb(esp_now_recv_cb_t(OnDataRecv));
 
-  // Register peers
+  // 6. Register peers
   peerInfo.channel = 0;
   peerInfo.encrypt = false;
+  
   // Add peer 1 - button ESP
   memcpy(peerInfo.peer_addr, broadcastAddress1, 6);
-
-  if (esp_now_add_peer(&peerInfo) != ESP_OK) 
-  {
-    Serial.println("Failed to add peer");
+  if (esp_now_add_peer(&peerInfo) != ESP_OK) {
+    Serial.println("Failed to add peer 1");
     return;
   }
+  Serial.println("Peer 1 added");
 
   // Add peer 2 - yellobyte ESP
   memcpy(peerInfo.peer_addr, broadcastAddress2, 6);
-  if (esp_now_add_peer(&peerInfo) != ESP_OK) 
-  {
-    Serial.println("Failed to add peer");
+  if (esp_now_add_peer(&peerInfo) != ESP_OK) {
+    Serial.println("Failed to add peer 2");
     return;
   }
+  Serial.println("Peer 2 added");
 
-  // Once ESPNow is successfully Init, we will register for recv CB to
-  // get recv packer info
-  esp_now_register_recv_cb(esp_now_recv_cb_t(OnDataRecv));
-
+  // 7. Initialize Board and NeoPixels LAST
+  Serial.println("Initializing board and LEDs...");
+  board.begin(ledPins);
+  board.assignColours();
+  board.clearAll();
+  
+  Serial.println("Setup complete!");
 }
 
 //=============================================================================================================
 void loop() {
   if(newDataAvailable)
   {
-    noInterrupts();
-    memcpy(boardsStructFront, boardsStructBack, sizeof(boardsStructBack));
     newDataAvailable = false;
+    memcpy(boardsStructFront, boardsStructBack, sizeof(boardsStructBack));
   }
   board.updateFromESPNOW(boardsStructFront);
   board.light(board.pressedTile());
 
-  Serial.print(board.tiles[9].getHeelSensor());
-
-  //Gamestate based on buttonInput
-  // 99 = Calibration
-  // 0 = Reset
-  // 1 = Entry Game level at 80%
-  // 2 = Game at 80% + 5%
-  // 3 = Game at 80% + 10%
-  // 4 = Game at 80% + 15%
-  // 5 = Game at 80% + 20%
 
 }  //end of loop
 
