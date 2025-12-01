@@ -40,7 +40,7 @@ uint32_t black = 0x000000;     // RGB: 0, 0, 0
 //------------------------------------ESP NOW STUFF--------------------------------------------------------------------------------------//
 
 // REPLACE WITH YOUR RECEIVER MAC Address = button _audio ESP
-uint8_t broadcastAddress1[] = { 0xEC, 0xDA, 0x3B, 0x95, 0xC4, 0xE0 };  //send to esp with buttons
+uint8_t broadcastAddress1[] = { 0x24, 0xEC, 0x4A, 0x00, 0x92, 0xF8 };  //send to esp with buttons
 uint8_t broadcastAddress2[] = { 0x3C, 0x84, 0x27, 0x31, 0xA0, 0x3C };  //send to yellobyte esp for sounds
 
 //int jumpCount; //number of jump to be sent defined later
