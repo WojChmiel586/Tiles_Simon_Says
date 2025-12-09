@@ -46,7 +46,7 @@ enum LEDsections : byte {
   int _pin;
   int _toeSensor;
   int _heelSensor;
-  int threshold = 400;
+  int threshold = 800;
   uint32_t colour = 0;
 
 };

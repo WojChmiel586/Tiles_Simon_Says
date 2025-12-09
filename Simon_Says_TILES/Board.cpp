@@ -31,7 +31,8 @@ void Board::assignColours() {
 }
 
 void Board::updateFromESPNOW(struct_message_all boards[]) {
-    auto mapColumn = [&](int columnIndex, int idx0, int idx1, int idx2, int idx3) {
+    auto mapColumn = [&](int columnIndex, int idx0, int idx1, int idx2, int idx3) 
+    {
         struct_message_all &s = boards[columnIndex];
         if (tiles[idx0]) tiles[idx0]->setSensors(s.dA, s.dB);
         if (tiles[idx1]) tiles[idx1]->setSensors(s.eA, s.eB);
