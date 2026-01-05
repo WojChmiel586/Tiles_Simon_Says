@@ -30,6 +30,7 @@ enum LEDsections : byte {
   void begin();
   void setColour(uint32_t c);
   void light();
+  void light(uint32_t c);
   void lightPartially(LEDsections section);
   void clear();
   bool isPressed();

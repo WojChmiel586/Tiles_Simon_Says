@@ -41,6 +41,15 @@ void Tile::light()
   strip->show();
 }
 
+void Tile::light(uint32_t c)
+{
+  for (int i = 0; i < strip->numPixels(); i++)
+  {
+    strip->setPixelColor(i, c);
+  }
+  strip->show();
+}
+
 void Tile::lightPartially(LEDsections section)
 {
   clear();

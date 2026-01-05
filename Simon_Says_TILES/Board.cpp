@@ -55,9 +55,38 @@ int Board::pressedTile() {
     return -1;
 }
 
+void Board::lightAll()
+{
+    for (auto& tile : tiles)
+    {
+        tile->light();
+    }
+}
+
+void Board::lightAll(uint32_t c)
+{
+    for (auto& tile : tiles)
+    {
+        tile->light(c);
+    }
+}
+
 void Board::light(int i) {
     if (i < 0 || i >= TILE_COUNT || !tiles[i]) return;
     tiles[i]->light();
+}
+
+void Board::blinkBoard(uint32_t c)
+{
+    blinkFlag = !blinkFlag;
+    if(blinkFlag)
+    {
+        lightAll(c);
+    }
+    else
+    {
+        clearAll();
+    }
 }
 
 void Board::clear(int i) {
@@ -66,7 +95,7 @@ void Board::clear(int i) {
 }
 
 void Board::clearAll() {
-    for (auto& tile : tiles) {  // Range-based for loop!
+    for (auto& tile : tiles) {
         if (tile) 
         {
             tile->clear();
