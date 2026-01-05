@@ -71,8 +71,8 @@ void OnDataRecv(const uint8_t *mac_addr, const uint8_t *incomingData, int len) {
   // copy incoming into myData
   memcpy(&myData, incomingData, sizeof(myData));
 
-  Serial.print("Received ID: ");
-  Serial.println(myData.id);  // Check what IDs are actually coming in
+  //Serial.print("Received ID: ");
+  //Serial.println(myData.id);  // Check what IDs are actually coming in
 
   int idx = myData.id - 1;
 
@@ -100,7 +100,7 @@ int sequenceIdx = 0;
 int prevSequenceLength = game_sequence.size();
 int lastTile = -1;
 unsigned long lastTileUpdate = 0;
-const unsigned long sequenceInterval = 400;
+const unsigned long sequenceInterval = 800;
 bool playerTurn = false;
 bool playerFailed = false;
 
@@ -167,7 +167,7 @@ void setup() {
   randomSeed(analogRead(0));
 
   //9. Initialise game specific stuff
-  simonSays.Init()
+  simonSays.Init();
   game_sequence.reserve(10);
   player_sequence.reserve(10);
   game_sequence.emplace_back(13);
@@ -197,6 +197,11 @@ void loop() {
       //GO THROUGH EACH TILE NUMBER IN SEQUENCE
       if (sequenceIdx < game_sequence.size()) {
         board.light(game_sequence.at(sequenceIdx));
+
+        if (sequenceIdx > 0)
+        {
+          board.clear(game_sequence.at(sequenceIdx-1));
+        }
         lastTileUpdate = millis();
         sequenceIdx++;
       }
@@ -213,11 +218,13 @@ void loop() {
     //9. IF CORRECT TILE STEPPED ON, WAIT FOR NEXT INPUT OTHERWISE END THE GAME
     //10 ONCE THE SEQUENCE IS COMPLETE, INDICATE A TILE FOR PLAYER TO STAND ON TO CONTINUE GAME
     //11 REPEAT UNTIL FAILURE
-    if (playerTurn) {
+    if (playerTurn && !playerFailed) {
       int pressedTile = board.pressedTile();
+
 
       //CHECK IF ANY VALID TILE IS PRESSED
       if (pressedTile != -1 && pressedTile < 16) {
+
         //CHECK IF TILE PRESSED CORRESPONDS TO THE TILE IN GAME SEQUENCE
         if (pressedTile == game_sequence.at(sequenceIdx) && pressedTile != lastTile) {
           //CODE WHEN TILE MATCHES SEQUENCE
@@ -231,9 +238,10 @@ void loop() {
             board.clearAll();
             playerTurn = false;
             sequenceIdx = 0;
+            lastTileUpdate = 0;
           }
         }
-        else {
+        else if (pressedTile != game_sequence.at(sequenceIdx) && pressedTile != lastTile) {
           //CODE WHEN TILE DOESN'T MATCH SEQUENCE
           //SOME SORT OF INDICATION OF FAILURE
 
@@ -244,6 +252,7 @@ void loop() {
           sequenceIdx = 0;
           prevSequenceLength = 0;
           playerFailed = true;
+          Serial.println("Player Lost");
         }
       }
     }
