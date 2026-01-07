@@ -17,6 +17,9 @@ Board board;
 // Structure for data
 struct_message_all myData;
 
+//Structure for results
+struct_message_all myResults;
+
 volatile bool newDataAvailable = false;
 struct_message_all boardsStructBack[7];
 struct_message_all boardsStructFront[7];
@@ -41,8 +44,9 @@ uint32_t black = 0x000000;    // RGB: 0, 0, 0
 //------------------------------------ESP NOW STUFF--------------------------------------------------------------------------------------//
 
 // REPLACE WITH YOUR RECEIVER MAC Address = button and audio ESP
-uint8_t broadcastAddress1[] = { 0x24, 0xEC, 0x4A, 0x00, 0x92, 0xF8 };  //send to esp with buttons
+uint8_t broadcastAddress1[] = { 0xEC, 0xDA, 0x3B, 0x95, 0xC4, 0xE0 };  //send to esp with buttons
 uint8_t broadcastAddress2[] = { 0x3C, 0x84, 0x27, 0x31, 0xA0, 0x3C };  //send to yellobyte esp for sounds
+uint8_t broadcastAddress3[] = { 0x24, 0xEC, 0x4A, 0x00, 0x92, 0xF8 };  //send to results esp
 
 //int jumpCount; //number of jump to be sent defined later
 int jumpState;  //variables - readings to be sent = 0,1,2,3 other/good/partial/fail jump
@@ -103,6 +107,8 @@ unsigned long lastTileUpdate = 0;
 const unsigned long sequenceInterval = 800;
 unsigned long blinkTime = 0;
 const unsigned long blinkInterval = 200;
+unsigned long endWaitTime = 0;
+const unsigned long endWaitInterval = 1000;
 bool playerTurn = false;
 bool playerFailed = false;
 int finalScore = 0;
@@ -158,6 +164,14 @@ void setup() {
   }
   Serial.println("Peer 2 added");
 
+  // Add peer 3 - results ESP
+  memcpy(peerInfo.peer_addr, broadcastAddress3, 6);
+  if (esp_now_add_peer(&peerInfo) != ESP_OK) {
+    Serial.println("Failed to add peer 3");
+    return;
+  }
+  Serial.println("Peer 3 added");
+
   // 7. Initialize Board and NeoPixels LAST
   Serial.println("Initializing board and LEDs...");
   board.begin(ledPins);
@@ -185,35 +199,45 @@ void loop() {
 
     board.updateFromESPNOW(boardsStructFront);
 
+    if(millis() - endWaitTime <= endWaitInterval && game_sequence.size() > 1)
+    {
+      return;
+    }
 
     //SIMON SAYS LOGIC:
     //1. RANDOMISE A NUMBER BETWEEN 0 and 15 and add it to the array
     if (game_sequence.size() == prevSequenceLength) 
     {
-
+      board.clearAll();
       //Add all possible tiles to a temporarly list <---- THIS CAN BE EXPANDED FOR HIGHER DIFFICULTIES
       std::vector<int> possibleTiles;
       int previous = game_sequence.back();
       if(previous + 1 <= 15 && previous + 1 >= 0 && previous % 4 != 3)
       {
-        possibleTiles.emplace_back(game_sequence.back() + 1);
+        possibleTiles.emplace_back(previous + 1);
       }
       if(previous - 1 <= 15 && previous - 1 >= 0 && previous % 4 != 0)
       {
-        possibleTiles.emplace_back(game_sequence.back() - 1);
+        possibleTiles.emplace_back(previous - 1);
       }
       if(game_sequence.back() + 4 <= 15 && game_sequence.back() + 4 >= 0)
       {
-        possibleTiles.emplace_back(game_sequence.back() + 4);
+        possibleTiles.emplace_back(previous + 4);
       }
       if(game_sequence.back() - 4 <= 15 && game_sequence.back() - 4 >= 0)
       {
-        possibleTiles.emplace_back(game_sequence.back() - 4);
+        possibleTiles.emplace_back(previous - 4);
       }
 
       //randomly choose one of these possible tiles and assign it to the sequence
       int nextTile = possibleTiles[random(0,possibleTiles.size())];
       game_sequence.emplace_back(nextTile);
+
+      for (auto tile : game_sequence)
+      {
+        Serial.print("Tile in the sequence: " );
+        Serial.println(tile);
+      }
     }
 
     //3. LIGHT UP THE FIRST TILE IN A SEQUENCE AND WAIT FOR A SET TIME
@@ -272,13 +296,15 @@ void loop() {
           {
             //PLAYER FINISHED THE SEQUENCE SUCCESFULLY
             prevSequenceLength = game_sequence.size();
-            board.clearAll();
+            //board.clearAll();
             playerTurn = false;
             sequenceIdx = 0;
             lastTileUpdate = 0;
+            lastTile = -1;
+            endWaitTime = millis();
           }
         }
-        else if (pressedTile != game_sequence.at(sequenceIdx) && pressedTile != lastTile) {
+        else if (pressedTile != game_sequence.at(sequenceIdx) && pressedTile != lastTile && sequenceIdx != 0) {
           //CODE WHEN TILE DOESN'T MATCH SEQUENCE
           //SOME SORT OF INDICATION OF FAILURE
 
@@ -292,6 +318,9 @@ void loop() {
           playerFailed = true;
 
           Serial.println("Player Lost");
+          myResults.id = 6;
+          myResults.eA = finalScore;
+          esp_err_t result1 = esp_now_send(broadcastAddress3, (uint8_t *)&myResults, sizeof(myResults));
         }
       }
     }
