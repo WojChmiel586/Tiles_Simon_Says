@@ -20,6 +20,10 @@ struct_message_all myData;
 //Structure for results
 struct_message_all myResults;
 
+//Struct for audio
+
+struct_message_all mySound;
+
 volatile bool newDataAvailable = false;
 struct_message_all boardsStructBack[7];
 struct_message_all boardsStructFront[7];
@@ -112,6 +116,7 @@ const unsigned long endWaitInterval = 1000;
 bool playerTurn = false;
 bool playerFailed = false;
 int finalScore = 0;
+int resetCount = 0;
 
 
 
@@ -284,6 +289,8 @@ void loop() {
         if (pressedTile == game_sequence.at(sequenceIdx) && pressedTile != lastTile) {
           //Light up stepped on tile
           board.light(pressedTile);
+
+
           //Turn off the previous tile (if any exist)
           if(lastTile >= 0 && lastTile <= 15)
           {
@@ -296,6 +303,13 @@ void loop() {
           {
             //PLAYER FINISHED THE SEQUENCE SUCCESFULLY
             prevSequenceLength = game_sequence.size();
+
+            //MAKE A SOUND WHEN PLAYER STEPS ON TILE
+            mySound.id = 6;          // sent from the game ESP
+            mySound.js = 1;  // 0,1,2,3 -> 0=do nothing, 1= good sound, 2=partial sound, 3=fail sound
+            // Send message2 via ESP-NOW to yellobyte
+            esp_err_t result1 = esp_now_send(broadcastAddress2, (uint8_t *)&mySound, sizeof(mySound));
+
             //board.clearAll();
             playerTurn = false;
             sequenceIdx = 0;
@@ -333,6 +347,12 @@ void loop() {
       {
         board.blinkBoard(red);
         blinkTime = millis();
+        resetCount++;
+
+        if (resetCount >= 10)
+        {
+          ResetGame();
+        }
       }
       //BUTTON CONTROL OR SOMETHING TO RESTART THE GAME? FOR NOW WE NEED TO CUT POWER TO RESTART
     }
@@ -345,5 +365,18 @@ void loop() {
 
 
 }  //end of loop
+
+void ResetGame()
+{
+  game_sequence.clear();
+  player_sequence.clear();
+  sequenceIdx = 0;
+  prevSequenceLength = game_sequence.size();
+  lastTile = -1;
+  playerTurn = false;
+  playerFailed = false;
+  finalScore = 0;
+  resetCount = 0;
+}
 
 //---------------------------------------FUNCTIONALITY-------------------------------------------------//
