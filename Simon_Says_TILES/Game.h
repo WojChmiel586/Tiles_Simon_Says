@@ -4,15 +4,19 @@
 #include <vector>
 #include <memory>
 
+
 class Game
 {
   public:
     Game(Board& game_board);
-    void Run();
-    void Init();
+    virtual void Run(unsigned long dt) = 0;
+    virtual void Init() = 0;
+
+  protected:
+    Board& board;
 
   private:
-    Board& board;
+
     //Game variables
     std::vector<int> game_sequence;
     std::vector<int> player_sequence;

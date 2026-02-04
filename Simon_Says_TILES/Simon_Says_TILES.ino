@@ -5,14 +5,16 @@
 
 #include "Board.h"
 #include "Game.h"
+#include "SimonSays.h"
+#include "Colours.h"
 #include "ESPNowStruct.h"
 
 #define PIN_NEO_PIXEL 17  // The ESP32 pin GPIO17 connected to NeoPixel-example
 #define NUM_PIXELS 61     // The number of LEDs (pixels) on NeoPixel
 
 int ledPins[16] = { 9, 15, 38, 42, 10, 16, 37, 41, 11, 17, 36, 40, 12, 18, 35, 39 };
-int lastHitTile = -1;
 Board board;
+unsigned long currentMillis = 0;
 
 // Structure for data
 struct_message_all myData;
@@ -23,23 +25,6 @@ struct_message_all myResults;
 volatile bool newDataAvailable = false;
 struct_message_all boardsStructBack[7];
 struct_message_all boardsStructFront[7];
-
-//COLOURS REGION
-#pragma region
-uint32_t lime = 0x69FF0A;     // RGB: 105, 255, 10
-uint32_t cyan = 0x00FFFF;     // RGB: 0, 255, 255
-uint32_t blue = 0x0000FF;     // RGB: 0, 0, 255
-uint32_t purple = 0xB419FF;   // RGB: 180, 25, 255
-uint32_t magenta = 0xFF00FF;  // RGB: 255, 0, 255
-uint32_t orange = 0xFF5F1E;   // RGB: 255, 95, 30
-uint32_t left = 0x00FFFF;     // Cyan
-uint32_t right = 0xFF00FF;    // Magenta
-uint32_t green = 0x00FF00;    // RGB: 0, 255, 0
-uint32_t yellow = 0xFFFF00;   // RGB: 255, 255, 0
-uint32_t red = 0xFF0000;      // RGB: 255, 0, 0
-uint32_t white = 0xFFFFFF;    // RGB: 255, 255, 255
-uint32_t black = 0x000000;    // RGB: 0, 0, 0
-#pragma endregion
 
 //------------------------------------ESP NOW STUFF--------------------------------------------------------------------------------------//
 
@@ -97,22 +82,7 @@ enum : byte {
 } state = Setup;
 
 //Game variables
-Game simonSays = Game(board);
-std::vector<int> game_sequence;
-std::vector<int> player_sequence;
-int sequenceIdx = 0;
-int prevSequenceLength = game_sequence.size();
-int lastTile = -1;
-unsigned long lastTileUpdate = 0;
-const unsigned long sequenceInterval = 800;
-unsigned long blinkTime = 0;
-const unsigned long blinkInterval = 200;
-unsigned long endWaitTime = 0;
-const unsigned long endWaitInterval = 1000;
-bool playerTurn = false;
-bool playerFailed = false;
-int finalScore = 0;
-
+Game* simonSays = new SimonSays(board);
 
 
 // the setup routine runs once when you press reset:--------------------------------------------------
@@ -184,166 +154,22 @@ void setup() {
   randomSeed(analogRead(0));
 
   //9. Initialise game specific stuff
-  simonSays.Init();
-  game_sequence.reserve(10);
-  player_sequence.reserve(10);
-  game_sequence.emplace_back(13);
+  simonSays->Init();
 }
 
 //=============================================================================================================
-void loop() {
+void loop() 
+{
+  currentMillis = millis();
   if (newDataAvailable) 
   {
     newDataAvailable = false;
     memcpy(boardsStructFront, boardsStructBack, sizeof(boardsStructBack));
 
     board.updateFromESPNOW(boardsStructFront);
-
-    if(millis() - endWaitTime <= endWaitInterval && game_sequence.size() > 1)
-    {
-      return;
-    }
-
-    //SIMON SAYS LOGIC:
-    //1. RANDOMISE A NUMBER BETWEEN 0 and 15 and add it to the array
-    if (game_sequence.size() == prevSequenceLength) 
-    {
-      board.clearAll();
-      //Add all possible tiles to a temporarly list <---- THIS CAN BE EXPANDED FOR HIGHER DIFFICULTIES
-      std::vector<int> possibleTiles;
-      int previous = game_sequence.back();
-      if(previous + 1 <= 15 && previous + 1 >= 0 && previous % 4 != 3)
-      {
-        possibleTiles.emplace_back(previous + 1);
-      }
-      if(previous - 1 <= 15 && previous - 1 >= 0 && previous % 4 != 0)
-      {
-        possibleTiles.emplace_back(previous - 1);
-      }
-      if(game_sequence.back() + 4 <= 15 && game_sequence.back() + 4 >= 0)
-      {
-        possibleTiles.emplace_back(previous + 4);
-      }
-      if(game_sequence.back() - 4 <= 15 && game_sequence.back() - 4 >= 0)
-      {
-        possibleTiles.emplace_back(previous - 4);
-      }
-
-      //randomly choose one of these possible tiles and assign it to the sequence
-      int nextTile = possibleTiles[random(0,possibleTiles.size())];
-      game_sequence.emplace_back(nextTile);
-
-      for (auto tile : game_sequence)
-      {
-        Serial.print("Tile in the sequence: " );
-        Serial.println(tile);
-      }
-    }
-
-    //3. LIGHT UP THE FIRST TILE IN A SEQUENCE AND WAIT FOR A SET TIME
-    //4. TURN OFF THE PREVIOUS LIGHT (OPTIONAL DEPENDING ON DIFFICULTY)
-    //5. TURN ON THE NEXT LIGHT IN THE SEQUENCE
-    //6. REPEAT 3-5 UNTIL NO MORE NUMBERS IN THE SEQUENCE
-    if (millis() - lastTileUpdate >= sequenceInterval && !playerTurn)
-    {
-      //GO THROUGH EACH TILE NUMBER IN SEQUENCE
-      if (sequenceIdx < game_sequence.size()) {
-        board.light(game_sequence.at(sequenceIdx));
-
-        if (sequenceIdx > 0)
-        {
-          board.clear(game_sequence.at(sequenceIdx-1));
-        }
-        lastTileUpdate = millis();
-        sequenceIdx++;
-      }
-      //WE FINISHED THE SEQUENCE
-      else
-      {
-        //CLEAR THE BOARD LIGHTS
-        board.clearAll();
-        sequenceIdx = 0;
-        playerTurn = true;
-      }
-    }
-
-    //PLAYERS TURN LOGIC:
-    //8. WAIT FOR PLAYER TO STEP ON TILE
-    //9. IF CORRECT TILE STEPPED ON, WAIT FOR NEXT INPUT OTHERWISE END THE GAME
-    //10 ONCE THE SEQUENCE IS COMPLETE, INDICATE A TILE FOR PLAYER TO STAND ON TO CONTINUE GAME
-    //11 REPEAT UNTIL FAILURE
-    if (playerTurn && !playerFailed) {
-      int pressedTile = board.pressedTile();
-
-
-      //CHECK IF ANY VALID TILE IS PRESSED
-      if (pressedTile >= 0 && pressedTile < 16) {
-        //CHECK IF TILE PRESSED CORRESPONDS TO THE TILE IN GAME SEQUENCE
-
-        //CODE WHEN TILE MATCHES SEQUENCE
-        if (pressedTile == game_sequence.at(sequenceIdx) && pressedTile != lastTile) {
-          //Light up stepped on tile
-          board.light(pressedTile);
-          //Turn off the previous tile (if any exist)
-          if(lastTile >= 0 && lastTile <= 15)
-          {
-            board.clear(lastTile);
-          }
-          sequenceIdx++;
-          lastTile = pressedTile;
-
-          if(sequenceIdx >= game_sequence.size())
-          {
-            //PLAYER FINISHED THE SEQUENCE SUCCESFULLY
-            prevSequenceLength = game_sequence.size();
-            //board.clearAll();
-            playerTurn = false;
-            sequenceIdx = 0;
-            lastTileUpdate = 0;
-            lastTile = -1;
-            endWaitTime = millis();
-          }
-        }
-        else if (pressedTile != game_sequence.at(sequenceIdx) && pressedTile != lastTile && sequenceIdx != 0) {
-          //CODE WHEN TILE DOESN'T MATCH SEQUENCE
-          //SOME SORT OF INDICATION OF FAILURE
-
-          finalScore = game_sequence.size();
-          //CLEAR BOARD AND RESTART
-          board.clearAll();
-          game_sequence.clear();
-          game_sequence.emplace_back(13);
-          sequenceIdx = 0;
-          prevSequenceLength = 0;
-          playerFailed = true;
-
-          Serial.println("Player Lost");
-          myResults.id = 6;
-          myResults.eA = finalScore;
-          esp_err_t result1 = esp_now_send(broadcastAddress3, (uint8_t *)&myResults, sizeof(myResults));
-        }
-      }
-    }
-
-    //END STATE FOR THE GAME WHEN PLAYER FAILS
-    if(playerFailed)
-    {
-      //BLINK THE BOARD LIGHTS RED TO INDICATE FAILURE
-      if (millis() - blinkTime >= blinkInterval)
-      {
-        board.blinkBoard(red);
-        blinkTime = millis();
-      }
-      //BUTTON CONTROL OR SOMETHING TO RESTART THE GAME? FOR NOW WE NEED TO CUT POWER TO RESTART
-    }
-
-
   }
 
-
-
-
-
+  simonSays->Run(millis() - currentMillis);
 }  //end of loop
 
 //---------------------------------------FUNCTIONALITY-------------------------------------------------//
