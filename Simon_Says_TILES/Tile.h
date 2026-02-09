@@ -51,11 +51,7 @@ struct LEDSegment
   int getToeSensor();
   int getHeelSensor();
 
-
-  //Different sections of Tiles
   private:
-
-
 
   std::unique_ptr<Adafruit_NeoPixel> strip;
   int _led_count;

@@ -16,16 +16,5 @@ class Game
     Board& board;
 
   private:
-
-    //Game variables
-    std::vector<int> game_sequence;
-    std::vector<int> player_sequence;
-    int sequenceIdx = 0;
-    int prevSequenceLength = game_sequence.size();
-    int lastTile = -1;
-    unsigned long lastTileUpdate = 0;
-    const unsigned long sequenceInterval = 400;
-    bool playerTurn = false;
-    bool playerFailed = false;
 };
 #endif
