@@ -1,7 +1,6 @@
 #ifndef SimonSays_h
 #define SimonSays_h
 #include "Game.h"
-#include "Colours.h"
 
 class SimonSays : public Game {
   public:

@@ -1,11 +1,12 @@
 #include <stdint.h>
 #pragma once
-#include "Tile.h"
-#include "ESPNowStruct.h"
 #include <esp_now.h>
 #include <WiFi.h>
 #include <vector>
 #include <memory>
+#include "Colours.h"
+#include "Tile.h"
+#include "ESPNowStruct.h"
 
 class Board {
 public:
