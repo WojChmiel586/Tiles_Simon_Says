@@ -92,27 +92,9 @@ void setup() {
   delay(100);  // Give serial time to initialize
   Serial.println("\n\nStarting setup...");
 
-  // 2. Initialize data structures
-  memset(boardsStructBack, 0, sizeof(boardsStructBack));
-  memset(boardsStructFront, 0, sizeof(boardsStructFront));
 
-  // 3. Initialize WiFi BEFORE ESP-NOW
-  Serial.println("Initializing WiFi...");
-  WiFi.mode(WIFI_STA);
-  WiFi.disconnect();  // Ensure clean state
-  delay(100);
 
-  // 4. Initialize ESP-NOW
-  Serial.println("Initializing ESP-NOW...");
-  if (esp_now_init() != ESP_OK) {
-    Serial.println("Error initializing ESP-NOW");
-    return;
-  }
-  Serial.println("ESP-NOW initialized successfully");
 
-  // 5. Register callbacks
-  esp_now_register_send_cb(OnDataSent);
-  esp_now_register_recv_cb(esp_now_recv_cb_t(OnDataRecv));
 
   // 6. Register peers
   peerInfo.channel = 0;

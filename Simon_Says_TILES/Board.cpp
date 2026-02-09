@@ -1,8 +1,19 @@
+#include "esp_now.h"
 #include "Board.h"
+//static initialise
+Board* Board::instance = nullptr;
+volatile bool Board::newDataAvailable = false;
+struct_message_all Board::boardsStructBack[7];
+
 
 Board::Board() {
     // Reserve space for 16 pointers, initialize to nullptr
     tiles.reserve(TILE_COUNT);
+
+    instance = this;
+
+  memset(boardsStructBack, 0, sizeof(boardsStructBack));
+  memset(boardsStructFront, 0, sizeof(boardsStructFront));
 }
 
 
@@ -27,6 +38,123 @@ void Board::assignColours() {
     {
         uint16_t hue = (i * 65536UL) / TILE_COUNT;
         tiles[i]->setColour(tiles[i]->Strip().ColorHSV(hue, 255, 255));
+    }
+}
+
+bool Board::initESPNow()
+{
+    //Initialize WiFi BEFORE ESP-NOW
+    Serial.println("Initializing WiFi...");
+    WiFi.mode(WIFI_STA);
+    WiFi.disconnect();  // Ensure clean state
+    delay(100);
+
+    //Initialize ESP-NOW
+    Serial.println("Initializing ESP-NOW...");
+    if (esp_now_init() != ESP_OK) 
+    {
+        Serial.println("Error initializing ESP-NOW");
+        return false;
+    }
+    Serial.println("ESP-NOW initialized successfully");
+
+    //Register callbacks
+    esp_now_register_send_cb(Board::onDataSent);
+    esp_now_register_recv_cb(esp_now_recv_cb_t(Board::OnDataRecv));
+
+    return true;
+}
+
+bool Board::addPeer(const uint8_t *macAddress)
+{
+    esp_now_peer_info_t peerInfo;
+    memset(&peerInfo, 0, sizeof(peerInfo));
+    peerInfo.channel = 0;
+    peerInfo.encrypt = false;
+    memcpy(peerInfo.peer_addr, macAddress, 6);
+
+    if(esp_now_add_peer(&peerInfo) != ESP_OK)
+    {
+        Serial.println("Failed to add peer");
+        return false;
+    }
+    Serial.println("Peer added successfully");
+    return true;
+}
+
+void Board::setPeerAddresses(const uint8_t *buttons, const uint8_t *audio, const uint8_t *results)
+{
+    memcpy(buttonsAddress, buttons, 6);
+    memcpy(audioAddress, audio, 6);
+    memcpy(resultsAddress, results, 6);
+}
+
+bool Board::sendMessage(const uint8_t *macAddress, struct_message_all &message)
+{
+    esp_err_t result = esp_now_send(macAddress, (uint8_t *)&message, sizeof(message));
+    if(result == ESP_OK)
+    {
+        Serial.println("Message sent successfully");
+        return true;
+    } 
+    else 
+    {
+        Serial.print("Error sending message: ");
+        Serial.println(result);
+        return false;
+    }
+}
+
+bool Board::sendToAudio(struct_message_all message)
+{
+    return sendMessage(audioAddress, message);
+}
+
+bool Board::sendToButtons(struct_message_all message)
+{
+    return sendMessage(buttonsAddress, message);
+}
+
+bool Board::sendToResults(struct_message_all message)
+{
+    return sendMessage(resultsAddress, message);
+}
+
+void Board::onDataSent(const uint8_t *mac_addr, esp_now_send_status_t status)
+{
+    Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
+}
+
+void Board::onDataReceived(const uint8_t *mac_addr, const uint8_t *incomingData, int len)
+{
+    struct_message_all myData;
+    memcpy(&myData, incomingData, sizeof(myData));
+
+    int idx = myData.id - 1;
+
+    if (idx < 0 || idx >= 7)
+    {
+        Serial.print("ERROR: Invalid board ID received: ");
+        Serial.println(myData.id);
+        return;
+    }
+
+    boardsStructBack[idx] = myData;
+    newDataAvailable = true;
+}
+
+bool Board::hasNewData()
+{
+    return newDataAvailable;
+}
+
+void Board::processRecievedData()
+{
+    if  (newDataAvailable)
+    {
+        newDataAvailable = false;
+        memcpy(boardsStructFront, boardsStructBack, sizeof(boardsStructBack));
+        updateFromESPNOW(boardsStructFront);
     }
 }
 
