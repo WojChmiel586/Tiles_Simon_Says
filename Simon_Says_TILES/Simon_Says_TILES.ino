@@ -73,10 +73,10 @@ void setup() {
 
   Serial.println("Setup complete!");
 
-  //6. Seed the random number generator
+  // Seed the random number generator
   randomSeed(analogRead(0));
 
-  //7. Initialise game specific stuff
+  // Initialise game specific stuff
   simonSays->Init();
 }
 

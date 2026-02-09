@@ -21,7 +21,20 @@ enum LEDsections : byte {
   BOTTOM_LEFT
 };
 
+struct LEDSegment 
+{
+  int startLED;
+  int amountLED;
+};
+
   public:
+  //static
+  static LEDSegment Q1[]; 
+  static LEDSegment Q2[]; 
+  static LEDSegment Q3[];
+  static LEDSegment Q4[];
+
+
   Tile();
   Tile(int pin);
   Adafruit_NeoPixel& Strip();
@@ -41,6 +54,8 @@ enum LEDsections : byte {
 
   //Different sections of Tiles
   private:
+
+
 
   std::unique_ptr<Adafruit_NeoPixel> strip;
   int _led_count;

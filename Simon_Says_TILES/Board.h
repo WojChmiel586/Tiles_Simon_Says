@@ -14,6 +14,7 @@ public:
 
     Board();
 
+    //Initialisation functions
     void begin(int ledPins[]);
     void assignColours();
 
@@ -37,8 +38,7 @@ public:
     void processRecievedData();
     void updateFromESPNOW(struct_message_all boards[]);
 
-    
-
+    //Tile interaction
     int pressedTile(); // first pressed tile index or -1
     void lightAll();
     void lightAll(uint32_t c);
@@ -65,6 +65,7 @@ uint8_t buttonsAddress[6];
 uint8_t audioAddress[6];
 uint8_t resultsAddress[6];
 
+//Misc
 bool blinkFlag = false;
 
 

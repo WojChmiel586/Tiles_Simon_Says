@@ -1,5 +1,29 @@
 #include "Tile.h"
 
+Tile::LEDSegment Tile::Q1[] = 
+  {
+    {20, 10},
+    {0, 5},
+    {51, 5}
+  };
+Tile::LEDSegment Tile::Q2[] = 
+{
+  {5, 15},
+  {51, 5}
+};
+Tile::LEDSegment Tile::Q3[] =
+{
+  {30, 11},
+  {0,5},
+  {56,5}
+};
+Tile::LEDSegment Tile::Q4[] =
+{
+  {41,10},
+  {5,5},
+  {56,5}
+};
+
 Tile::Tile()
 {
   strip = std::make_unique<Adafruit_NeoPixel>(0, 0, NEO_GRB + NEO_KHZ800);
