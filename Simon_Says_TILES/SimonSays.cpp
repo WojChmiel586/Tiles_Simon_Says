@@ -111,7 +111,13 @@ void SimonSays::Run(unsigned long dt)
           {
             //PLAYER FINISHED THE SEQUENCE SUCCESFULLY
             prevSequenceLength = game_sequence.size();
-            //board.clearAll();
+
+            //Send Succcess sounds to audio ESP
+            struct_message_all audioMessage;
+            audioMessage.id = 6;
+            audioMessage.js = 1;
+            board.sendToAudio(audioMessage);
+
             playerTurn = false;
             sequenceIdx = 0;
             lastTileUpdate = 0;

@@ -29,6 +29,8 @@ void Board::begin(int ledPins[])
         tiles[i]->begin();
         tiles[i]->clear();
     }
+
+    assignColours();
     
     Serial.println("Board::begin() complete");
 }
@@ -60,7 +62,7 @@ bool Board::initESPNow()
 
     //Register callbacks
     esp_now_register_send_cb(Board::onDataSent);
-    esp_now_register_recv_cb(esp_now_recv_cb_t(Board::OnDataRecv));
+    esp_now_register_recv_cb(esp_now_recv_cb_t(Board::onDataReceived));
 
     return true;
 }
