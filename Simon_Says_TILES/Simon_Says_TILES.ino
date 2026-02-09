@@ -91,17 +91,4 @@ void loop()
   simonSays->Run(millis() - currentMillis);
 }  //end of loop
 
-void ResetGame()
-{
-  game_sequence.clear();
-  player_sequence.clear();
-  sequenceIdx = 0;
-  prevSequenceLength = game_sequence.size();
-  lastTile = -1;
-  playerTurn = false;
-  playerFailed = false;
-  finalScore = 0;
-  resetCount = 0;
-}
-
 //---------------------------------------FUNCTIONALITY-------------------------------------------------//
