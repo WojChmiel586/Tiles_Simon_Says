@@ -112,7 +112,7 @@ bool Board::sendToAudio(struct_message_all message)
     return sendMessage(audioAddress, message);
 }
 
-bool Board::sendToButtons(struct_message_all message)
+bool Board::sendToLaptop(struct_message_all message)
 {
     return sendMessage(buttonsAddress, message);
 }

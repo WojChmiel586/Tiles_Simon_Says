@@ -26,7 +26,7 @@ public:
     //ESP-NOW sending
     bool sendMessage(const uint8_t* macAddress, struct_message_all& message);
     bool sendToAudio(struct_message_all message);
-    bool sendToButtons(struct_message_all message);
+    bool sendToLaptop(struct_message_all message);
     bool sendToResults(struct_message_all message);
 
     //Static callbacks for ESP-NOW
