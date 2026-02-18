@@ -1,27 +1,72 @@
 #include "Tile.h"
 
-Tile::LEDSegment Tile::Q1[] = 
+std::vector<Tile::LEDSegment> Tile::Q1 = 
   {
-    {20, 10},
+    {20, 11},
     {0, 5},
     {51, 5}
   };
-Tile::LEDSegment Tile::Q2[] = 
+std::vector <Tile::LEDSegment> Tile::Q2 = 
 {
-  {5, 15},
+  {5, 16},
   {51, 5}
 };
-Tile::LEDSegment Tile::Q3[] =
+std::vector <Tile::LEDSegment> Tile::Q3 =
 {
-  {30, 11},
+  {31, 10},
   {0,5},
   {56,5}
 };
-Tile::LEDSegment Tile::Q4[] =
+std::vector <Tile::LEDSegment> Tile::Q4 =
 {
   {41,10},
   {5,5},
   {56,5}
+};
+
+std::vector <Tile::LEDSegment> Tile::HalfL =
+{
+  {20,21},
+  {51,10}
+};
+
+std::vector <Tile::LEDSegment> Tile::HalfR =
+{
+  {10,11},
+  {51,10},
+  {41,10}
+};
+
+std::vector <Tile::LEDSegment> Tile::HalfUp =
+{
+  {0,31}
+};
+
+std::vector <Tile::LEDSegment> Tile::HalfDown =
+{
+  {0,10},
+  {30,21}
+};
+
+std::vector <Tile::LEDSegment> Tile::Outline =
+{
+  {10,41}
+};
+
+std::vector <Tile::LEDSegment> Tile::CentreHoriz =
+{
+  {0,10}
+};
+
+std::vector <Tile::LEDSegment> Tile::CentreVert =
+{
+  {51,10}
+};
+
+std::vector <Tile::LEDSegment> Tile::Cross =
+{
+  {51,10},
+  {0,10}
 };
 
 Tile::Tile()
@@ -74,42 +119,105 @@ void Tile::light(uint32_t c)
   strip->show();
 }
 
-void Tile::lightPartially(LEDsections section)
+void Tile::lightPartially(LEDsections section, uint32_t c)
 {
   clear();
+  std::vector<LEDSegment> segments;
+  uint32_t color;
+  if(c == 0)
+  {
+    color = colour;
+  }
+  else
+  {
+    color = c;
+  }
+
   switch (section) 
   {
   case TOP_HALF:
-  
+  {
+    segments = Tile::HalfUp;
+  }
   break;
   case BOTTOM_HALF:
+  {
+    segments = Tile::HalfDown;
+  }
 
   break;
   case LEFT_HALF:
+  {
+    segments = Tile::HalfL;
+  }
 
   break;
   case RIGHT_HALF:
+  {
+    segments = Tile::HalfR;
+  }
 
   break;
-  case CENTRE_LINE:
+  case OUTLINE:
+  {
+    segments = Tile::Outline;
+  }
+  break;
+
+  case CENTRE_LINE_VERTICAL:
+  {
+    segments = Tile::CentreVert;
+  }
+
+  break;
+  case CENTRE_LINE_HORIZONTAL:
+  {
+    segments = Tile::CentreHoriz;
+  }
+
+  break;
+  case CROSS:
+  {
+    segments = Tile::Cross;
+  }
 
   break;
   case TOP_LEFT:
+  {
+    segments = Tile::Q1;
+  }
 
   break;
   case TOP_RIGHT:
-
+  {
+    segments = Tile::Q2;
+  }
   break;
   case BOTTOM_RIGHT:
+  {
+    segments = Tile::Q4;
+  }
 
   break;
   case BOTTOM_LEFT:
+  {
+    segments = Tile::Q3;
+  }
 
   break;
   default:
 
   break;
   }
+
+    for(auto& segment : segments)
+    {
+      for(int i = 0; i < segment.amountLED; i++)
+      {
+        strip->setPixelColor(segment.startLED + i, color);
+      }
+    }
+    strip->show();
 
 }
 void Tile::clear() 

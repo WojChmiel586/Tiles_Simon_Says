@@ -30,6 +30,10 @@ enum : byte {
 
 //Game variables
 Game* simonSays = new SimonSays(board);
+bool sectionTest = false;
+unsigned long testInterval = 1000;
+unsigned long testTimer = 0;
+int section = 0;
 
 
 // the setup routine runs once when you press reset:--------------------------------------------------
@@ -84,11 +88,41 @@ void setup() {
 void loop() 
 {
   currentMillis = millis();
-
   board.processRecievedData();
 
+  if(currentMillis - testTimer >= testInterval)
+  {
+    sectionTest = false;
+    testTimer = currentMillis;
+    section++;
+    if(section >= 12)
+    section = 0;
+  }
+  if (!sectionTest)
+  {
+    Tile::LEDsections m_section = static_cast<Tile::LEDsections>(section);
+    board.light(0, Colours::blue, m_section);
+    board.light(1, Colours::blue, m_section);
+    board.light(2, Colours::blue, m_section);
+    board.light(3, Colours::blue, m_section);
+    board.light(4, Colours::red, m_section);
+    board.light(5, Colours::red, m_section);
+    board.light(6, Colours::red, m_section);
+    board.light(7, Colours::red, m_section);
+    board.light(8, Colours::green, m_section);
+    board.light(9, Colours::green, m_section);
+    board.light(10, Colours::green, m_section);
+    board.light(11, Colours::green, m_section);
+    board.light(12, Colours::white, m_section);
+    board.light(13, Colours::white, m_section);
+    board.light(14, Colours::white, m_section);
+    board.light(15, Colours::white, m_section);
+
+    sectionTest = true;
+  }
+
   //Run the game
-  simonSays->Run(millis() - currentMillis);
+  //simonSays->Run(millis() - currentMillis);
 }  //end of loop
 
 //---------------------------------------FUNCTIONALITY-------------------------------------------------//

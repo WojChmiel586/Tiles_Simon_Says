@@ -201,9 +201,23 @@ void Board::lightAll(uint32_t c)
     }
 }
 
-void Board::light(int i) {
+void Board::light(int i, uint32_t c, Tile::LEDsections section) {
     if (i < 0 || i >= TILE_COUNT || !tiles[i]) return;
-    tiles[i]->light();
+    if(section != Tile::WHOLE)
+    {
+        tiles[i]->lightPartially(section, c);
+    }
+    else
+    {
+        if (c != 0)
+        {
+            tiles[i]->light(c);
+        }
+        else
+        {
+            tiles[i]->light();
+        }
+    }
 }
 
 void Board::blinkBoard(uint32_t c)

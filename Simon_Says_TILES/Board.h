@@ -42,7 +42,7 @@ public:
     int pressedTile(); // first pressed tile index or -1
     void lightAll();
     void lightAll(uint32_t c);
-    void light(int i);
+    void light(int i, uint32_t c = 0, Tile::LEDsections section = Tile::LEDsections::WHOLE);
     void blinkBoard(uint32_t c);
     void clear(int i);
     void clearAll();
