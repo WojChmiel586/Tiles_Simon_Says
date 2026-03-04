@@ -185,6 +185,25 @@ int Board::pressedTile() {
     return -1;
 }
 
+bool Board::tilePressed(int idx, int weightOn) const
+{
+    if (idx < 0 || idx >= TILE_COUNT) return false;
+    return (tiles[idx]->getToeSensor()  > weightOn ||
+            tiles[idx]->getHeelSensor() > weightOn);
+}
+
+int Board::toeSensor(int idx) const
+{
+    if (idx < 0 || idx >= TILE_COUNT) return 0;
+    return tiles[idx]->getToeSensor();
+}
+
+int Board::heelSensor(int idx) const
+{
+    if (idx < 0 || idx >= TILE_COUNT) return 0;
+    return tiles[idx]->getHeelSensor();
+}
+
 void Board::lightAll()
 {
     for (auto& tile : tiles)
