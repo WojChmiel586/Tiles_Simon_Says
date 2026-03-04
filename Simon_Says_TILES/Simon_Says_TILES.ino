@@ -30,6 +30,7 @@ enum : byte {
   JUMP_ROPE
 } state = GAME_SELECTION;
 std::vector<Game*> games;
+Game* currentGame;
 
 //Game variables
 Game* simonSays = new SimonSays(board);
@@ -38,6 +39,8 @@ Game* jumpRope = new JumpRope(board);
 //delta time
 unsigned long previousTime = 0;
 unsigned long deltaTime = 0;
+int gameSelection = 0;
+bool switchGame = false;
 // the setup routine runs once when you press reset:--------------------------------------------------
 void setup() {
   // 1. Initialize Serial FIRST (for debugging)
@@ -91,6 +94,7 @@ void setup() {
   games.push_back(simonSays);
   games.push_back(jumpRope);
   previousTime = millis();
+  currentGame = jumpRope;
 }
 
 //=============================================================================================================
@@ -100,10 +104,31 @@ void loop()
   deltaTime = (currentTime - previousTime);
   previousTime = currentTime;
   board.processRecievedData();
+  if(gameSelection != board.getStructFront()[4].b)
+  {
+    gameSelection = board.getStructFront()[4].b;
+    switchGame = true;
+  }
 
-  board.getStructFront()[4].b;
+
+  //JUMP ROPE
+  if (gameSelection == 97 && switchGame)
+  {
+    currentGame = jumpRope;
+    switchGame = false;
+    currentGame->Init();
+  }
+  //SIMON SAYS
+  if (gameSelection == 98 && switchGame)
+  {
+    currentGame = simonSays;
+    switchGame = false;
+    currentGame->Init();
+  }
+
   //Run the game
-  jumpRope->Run(deltaTime);
+  currentGame->Run(deltaTime);
+  //jumpRope->Run(deltaTime);
   //simonSays->Run(deltaTime);
 }  //end of loop
 

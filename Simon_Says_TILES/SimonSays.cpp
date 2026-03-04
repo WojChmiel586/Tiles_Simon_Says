@@ -7,6 +7,13 @@ SimonSays::SimonSays(Board& game_board) : Game(game_board)
 
 void SimonSays::Init()
 {
+  game_sequence.clear();
+  player_sequence.clear();
+  board.clearAll();
+  playerTurn = false;
+  sequenceIdx = 0;
+  lastTileUpdate = 0;
+  lastTile = -1;
   game_sequence.reserve(10);
   player_sequence.reserve(10);
   game_sequence.emplace_back(13);
