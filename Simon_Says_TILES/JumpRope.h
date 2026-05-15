@@ -10,6 +10,7 @@ public:
 
     void Init() override;
     void Run(unsigned long dt) override;
+    void HandleInput(int input) override;  // buttons 1-5 → set difficulty level
 
     // Call this before Init()/Run() to set the difficulty level (1–5),
     void setLevel(int level);
@@ -52,9 +53,6 @@ private:
     unsigned long startMillis    = 0;
     unsigned long feedbackMillis = 0;   // timer for non-blocking feedback display
 
-
-    // Sensor helpers
-    int getButtonInput() const { return board.getStructFront()[4].b; };
 
     // LED helpers
     // Light a row of 4 tiles (startTile..endTile-1) using a partial section

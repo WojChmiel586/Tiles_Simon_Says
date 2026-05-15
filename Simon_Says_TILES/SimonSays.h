@@ -10,6 +10,7 @@ class SimonSays : public Game {
 
   void Run(unsigned long dt) override;
   void Init() override;
+  void HandleInput(int input) override;
 
   private:
 
@@ -27,6 +28,8 @@ class SimonSays : public Game {
   bool playerTurn = false;
   bool playerFailed = false;
   int finalScore = 0;
+  int blinkCount = 0;
+  static const int FAIL_BLINKS = 5;
 
 
 };

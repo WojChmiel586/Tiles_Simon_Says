@@ -45,13 +45,8 @@ void JumpRope::Run(unsigned long dt)
 {
     unsigned long currentMillis = millis();
 
-    //If button is pressed we change level and restart game
-    if(getButtonInput() != level)
-    {
-        setLevel(getButtonInput());
-        Init();
-    }
-    
+    //If button is pressed we change level and restart game - now handled via HandleInput()
+
     switch (currentRopeState) 
     {
 
@@ -305,4 +300,19 @@ void JumpRope::sendResultMessage(int js, int jc)
     // airtime is hard-coded to lineDelay for now; extend if needed
     msg.t  = lineDelay;
     board.sendToLaptop(msg);
+}
+
+// =============================================================================
+// Input handling — called by the .ino when a button 1-5 is pressed
+// =============================================================================
+
+void JumpRope::HandleInput(int input)
+{
+    if (input >= 1 && input <= 5)
+    {
+        setLevel(input);
+        Init();
+        Serial.print("JumpRope: level set to ");
+        Serial.println(input);
+    }
 }
