@@ -9,6 +9,7 @@
 #include "Game.h"
 #include "SimonSays.h"
 #include "JumpRope.h"
+#include "Calibration.h"
 #include "Colours.h"
 #include "ESPNowStruct.h"
 
@@ -24,23 +25,35 @@ uint8_t broadcastAddress1[] = { 0xEC, 0xDA, 0x3B, 0x95, 0xC4, 0xE0 };  //send to
 uint8_t broadcastAddress2[] = { 0x3C, 0x84, 0x27, 0x31, 0xA0, 0x3C };  //send to yellobyte esp for sounds
 uint8_t broadcastAddress3[] = { 0x24, 0xEC, 0x4A, 0x00, 0x92, 0xF8 };  //send to results esp
 
-enum : byte {
-  GAME_SELECTION,
-  SIMON_SAYS,
-  JUMP_ROPE
-} state = GAME_SELECTION;
-std::vector<Game*> games;
-Game* currentGame;
+// ---- Game instances --------------------------------------------------------
+Game* simonSays   = new SimonSays(board);
+Game* jumpRope    = new JumpRope(board);
+Game* calibration = new Calibration(board);
+Game* currentGame = nullptr;
 
-//Game variables
-Game* simonSays = new SimonSays(board);
-Game* jumpRope = new JumpRope(board);
+// ---- Button input routing --------------------------------------------------
+// Game-select buttons (95-98) switch the active game immediately.
+// In-game buttons (1-5) are passed to the current game via HandleInput().
+// 0 = idle / no press, ignored.
 
-//delta time
+// Values that trigger a game switch and which game they map to:
+//   95 → (reserved for future game)
+//   96 → Calibration (selects exercise via setExercise, then Init)
+//   97 → JumpRope
+//   98 → SimonSays
+// Values 1-5 are forwarded to currentGame->HandleInput().
+// Values 91-94 select a calibration exercise (sets exercise + switches to Calibration).
+// NOTE: exercise values 91-94 will likely be reassigned when button layout is finalised.
+
+static const int BUTTON_JUMPROPE    = 97;
+static const int BUTTON_SIMONSAYS   = 98;
+static const int BUTTON_CALIBRATION = 96;  // switches to calibration mode; exercise set by 91-94
+
+int  lastButtonValue = 0;   // previous frame's .b — for edge detection
+
+// ---- Delta time ------------------------------------------------------------
 unsigned long previousTime = 0;
-unsigned long deltaTime = 0;
-int gameSelection = 0;
-bool switchGame = false;
+unsigned long deltaTime    = 0;
 // the setup routine runs once when you press reset:--------------------------------------------------
 void setup() {
   // 1. Initialize Serial FIRST (for debugging)
@@ -86,50 +99,76 @@ void setup() {
   randomSeed(analogRead(0));
 
   // Initialise game specific stuff
-
   simonSays->Init();
-  static_cast<JumpRope*>(jumpRope)->setLevel(1);
   jumpRope->Init();
-  games.reserve(6);
-  games.push_back(simonSays);
-  games.push_back(jumpRope);
+  calibration->Init();
   previousTime = millis();
-  currentGame = jumpRope;
+  currentGame = jumpRope;   // default game on boot
+  lastButtonValue = 0;
 }
 
 //=============================================================================================================
 void loop() 
 {
   unsigned long currentTime = millis();
-  deltaTime = (currentTime - previousTime);
-  previousTime = currentTime;
+  deltaTime     = (currentTime - previousTime);
+  previousTime  = currentTime;
+
   board.processRecievedData();
-  if(gameSelection != board.getStructFront()[4].b)
+
+  // --- Read button input (edge-triggered: only act on a new press) ----------
+  int buttonValue = board.getStructFront()[4].b;
+
+  if (buttonValue != lastButtonValue)   // value changed this frame
   {
-    gameSelection = board.getStructFront()[4].b;
-    switchGame = true;
+    lastButtonValue = buttonValue;
+
+    if (buttonValue != 0)               // 0 = idle, ignore
+    {
+      // --- Game-select tier (95-98) ----------------------------------------
+      if (buttonValue == BUTTON_JUMPROPE)
+      {
+        Serial.println("Switching to JumpRope");
+        currentGame = jumpRope;
+        currentGame->Init();
+      }
+      else if (buttonValue == BUTTON_SIMONSAYS)
+      {
+        Serial.println("Switching to SimonSays");
+        currentGame = simonSays;
+        currentGame->Init();
+      }
+      else if (buttonValue == BUTTON_CALIBRATION)
+      {
+        Serial.println("Switching to Calibration");
+        currentGame = calibration;
+        currentGame->Init();
+      }
+      // --- Calibration exercise select (91-94) -----------------------------
+      // Switches to Calibration and selects the exercise in one button press.
+      // Values will be reassigned when button layout is finalised.
+      else if (buttonValue >= 91 && buttonValue <= 94)
+      {
+        Serial.print("Calibration exercise: ");
+        Serial.println(buttonValue);
+        static_cast<Calibration*>(calibration)->setExercise(buttonValue);
+        currentGame = calibration;
+        currentGame->Init();
+      }
+      // --- In-game tier (1-5): forward to current game ---------------------
+      else if (buttonValue >= 1 && buttonValue <= 5)
+      {
+        Serial.print("In-game input: ");
+        Serial.println(buttonValue);
+        currentGame->HandleInput(buttonValue);
+      }
+      // values 95 reserved — add future games here
+    }
   }
 
-
-  //JUMP ROPE
-  if (gameSelection == 97 && switchGame)
-  {
-    currentGame = jumpRope;
-    switchGame = false;
-    currentGame->Init();
-  }
-  //SIMON SAYS
-  if (gameSelection == 98 && switchGame)
-  {
-    currentGame = simonSays;
-    switchGame = false;
-    currentGame->Init();
-  }
-
-  //Run the game
+  // --- Run the active game --------------------------------------------------
   currentGame->Run(deltaTime);
-  //jumpRope->Run(deltaTime);
-  //simonSays->Run(deltaTime);
+
 }  //end of loop
 
 //---------------------------------------TEST CODE-------------------------------------------------//

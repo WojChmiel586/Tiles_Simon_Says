@@ -11,6 +11,7 @@ class Game
     Game(Board& game_board);
     virtual void Run(unsigned long dt) = 0;
     virtual void Init() = 0;
+    virtual void HandleInput(int input) = 0;  // in-game button handling (values 1-5)
 
   protected:
     Board& board;
