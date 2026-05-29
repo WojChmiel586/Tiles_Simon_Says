@@ -11,6 +11,7 @@
 class Board {
 public:
     static const int TILE_COUNT = 16;
+    static const int weightThreshold = 800;
 
     Board();
 
@@ -30,22 +31,28 @@ public:
     bool sendToResults(struct_message_all message);
 
     //Static callbacks for ESP-NOW
-    static void onDataSent(const uint8_t *mac_addr, esp_now_send_status_t status);
+    static void onDataSent(const esp_now_send_info_t* send_info, esp_now_send_status_t status);
     static void onDataReceived(const uint8_t *mac_addr, const uint8_t *incomingData, int len);
 
     //Recieve data
     bool hasNewData();
     void processRecievedData();
     void updateFromESPNOW(struct_message_all boards[]);
+    struct_message_all* getStructFront() {return boardsStructFront; };
+    void wipeResults();
+
 
     //Tile interaction
-    int pressedTile(); // first pressed tile index or -1
-    void lightAll();
-    void lightAll(uint32_t c);
-    void light(int i, uint32_t c = 0, Tile::LEDsections section = Tile::LEDsections::WHOLE);
-    void blinkBoard(uint32_t c);
-    void clear(int i);
-    void clearAll();
+    int     pressedTile(); // first pressed tile index or -1
+    bool    tilePressed(int idx, int weightOn = weightThreshold) const;
+    int     toeSensor(int idx) const;
+    int     heelSensor(int idx) const;
+    void    lightAll();
+    void    lightAll(uint32_t c);
+    void    light(int i, uint32_t c = 0, Tile::LEDsections section = Tile::LEDsections::WHOLE);
+    void    blinkBoard(uint32_t c);
+    void    clear(int i);
+    void    clearAll();
     std::vector<std::unique_ptr<Tile>> tiles;
 
 

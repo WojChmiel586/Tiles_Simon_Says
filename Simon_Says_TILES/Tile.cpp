@@ -1,74 +1,5 @@
 #include "Tile.h"
 
-std::vector<Tile::LEDSegment> Tile::Q1 = 
-  {
-    {20, 11},
-    {0, 5},
-    {51, 5}
-  };
-std::vector <Tile::LEDSegment> Tile::Q2 = 
-{
-  {5, 16},
-  {51, 5}
-};
-std::vector <Tile::LEDSegment> Tile::Q3 =
-{
-  {31, 10},
-  {0,5},
-  {56,5}
-};
-std::vector <Tile::LEDSegment> Tile::Q4 =
-{
-  {41,10},
-  {5,5},
-  {56,5}
-};
-
-std::vector <Tile::LEDSegment> Tile::HalfL =
-{
-  {20,21},
-  {51,10}
-};
-
-std::vector <Tile::LEDSegment> Tile::HalfR =
-{
-  {10,11},
-  {51,10},
-  {41,10}
-};
-
-std::vector <Tile::LEDSegment> Tile::HalfUp =
-{
-  {0,31}
-};
-
-std::vector <Tile::LEDSegment> Tile::HalfDown =
-{
-  {0,10},
-  {30,21}
-};
-
-std::vector <Tile::LEDSegment> Tile::Outline =
-{
-  {10,41}
-};
-
-std::vector <Tile::LEDSegment> Tile::CentreHoriz =
-{
-  {0,10}
-};
-
-std::vector <Tile::LEDSegment> Tile::CentreVert =
-{
-  {51,10}
-};
-
-std::vector <Tile::LEDSegment> Tile::Cross =
-{
-  {51,10},
-  {0,10}
-};
-
 Tile::Tile()
 {
   strip = std::make_unique<Adafruit_NeoPixel>(0, 0, NEO_GRB + NEO_KHZ800);
@@ -135,79 +66,23 @@ void Tile::lightPartially(LEDsections section, uint32_t c)
 
   switch (section) 
   {
-  case TOP_HALF:
-  {
-    segments = Tile::HalfUp;
-  }
-  break;
-  case BOTTOM_HALF:
-  {
-    segments = Tile::HalfDown;
-  }
-
-  break;
-  case LEFT_HALF:
-  {
-    segments = Tile::HalfL;
-  }
-
-  break;
-  case RIGHT_HALF:
-  {
-    segments = Tile::HalfR;
-  }
-
-  break;
-  case OUTLINE:
-  {
-    segments = Tile::Outline;
-  }
-  break;
-
-  case CENTRE_LINE_VERTICAL:
-  {
-    segments = Tile::CentreVert;
-  }
-
-  break;
-  case CENTRE_LINE_HORIZONTAL:
-  {
-    segments = Tile::CentreHoriz;
-  }
-
-  break;
-  case CROSS:
-  {
-    segments = Tile::Cross;
-  }
-
-  break;
-  case TOP_LEFT:
-  {
-    segments = Tile::Q1;
-  }
-
-  break;
-  case TOP_RIGHT:
-  {
-    segments = Tile::Q2;
-  }
-  break;
-  case BOTTOM_RIGHT:
-  {
-    segments = Tile::Q4;
-  }
-
-  break;
-  case BOTTOM_LEFT:
-  {
-    segments = Tile::Q3;
-  }
-
-  break;
-  default:
-
-  break;
+    case TOP_HALF: segments = Tile::HalfUp;                     break;
+    case BOTTOM_HALF: segments = Tile::HalfDown;                break;
+    case LEFT_HALF: segments = Tile::HalfL;                     break;
+    case RIGHT_HALF: segments = Tile::HalfR;                    break;
+    case OUTLINE: segments = Tile::Outline;                     break;
+    case LEFT_LINE_VERTICAL: segments = Tile::LeftVert;         break;
+    case CENTRE_LINE_VERTICAL: segments = Tile::CentreVert;     break;
+    case RIGHT_LINE_VERTICAL: segments = Tile::RightVert;       break;
+    case TOP_LINE_HORIZONTAL: segments = Tile::TopHoriz;        break;
+    case CENTRE_LINE_HORIZONTAL: segments = Tile::CentreHoriz;  break;
+    case BOTTOM_LINE_HORIZONTAL: segments = Tile::BottomHoriz;  break;
+    case CROSS: segments = Tile::Cross;                         break;
+    case TOP_LEFT: segments = Tile::Q1;                         break;
+    case TOP_RIGHT: segments = Tile::Q2;                        break;
+    case BOTTOM_RIGHT: segments = Tile::Q4;                     break;
+    case BOTTOM_LEFT: segments = Tile::Q3;                      break;
+    default: segments = Tile::Cross;                            break;
   }
 
     for(auto& segment : segments)
@@ -218,8 +93,8 @@ void Tile::lightPartially(LEDsections section, uint32_t c)
       }
     }
     strip->show();
-
 }
+
 void Tile::clear() 
 {
   strip->clear();
@@ -248,3 +123,93 @@ int Tile::getHeelSensor()
 {
     return _heelSensor;
 }
+
+std::vector<Tile::LEDSegment> Tile::Q1 = 
+  {
+    {20, 11},
+    {0, 5},
+    {51, 5}
+  };
+std::vector <Tile::LEDSegment> Tile::Q2 = 
+{
+  {5, 16},
+  {51, 5}
+};
+std::vector <Tile::LEDSegment> Tile::Q3 =
+{
+  {31, 10},
+  {0,5},
+  {56,5}
+};
+std::vector <Tile::LEDSegment> Tile::Q4 =
+{
+  {41,10},
+  {5,5},
+  {56,5}
+};
+
+std::vector <Tile::LEDSegment> Tile::HalfL =
+{
+  {20,21},
+  {51,10}
+};
+
+std::vector <Tile::LEDSegment> Tile::HalfR =
+{
+  {10,11},
+  {51,10},
+  {41,10}
+};
+
+std::vector <Tile::LEDSegment> Tile::HalfUp =
+{
+  {0,31}
+};
+
+std::vector <Tile::LEDSegment> Tile::HalfDown =
+{
+  {0,10},
+  {30,21}
+};
+
+std::vector <Tile::LEDSegment> Tile::Outline =
+{
+  {10,41}
+};
+
+std::vector <Tile::LEDSegment> Tile::TopHoriz =
+{
+  {15,10}
+};
+
+std::vector <Tile::LEDSegment> Tile::CentreHoriz =
+{
+  {0,10}
+};
+
+std::vector <Tile::LEDSegment> Tile::BottomHoriz =
+{
+  {35,10}
+};
+
+std::vector <Tile::LEDSegment> Tile::LeftVert =
+{
+  {25,10}
+};
+
+std::vector <Tile::LEDSegment> Tile::CentreVert =
+{
+  {51,10}
+};
+
+std::vector <Tile::LEDSegment> Tile::RightVert =
+{
+  {46,5},
+  {10,5}
+};
+
+std::vector <Tile::LEDSegment> Tile::Cross =
+{
+  {51,10},
+  {0,10}
+};

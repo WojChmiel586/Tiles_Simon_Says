@@ -10,7 +10,7 @@ struct Colours
   static constexpr uint32_t blue = 0x0000FF;     // RGB: 0, 0, 255
   static constexpr uint32_t purple = 0xB419FF;   // RGB: 180, 25, 255
   static constexpr uint32_t magenta = 0xFF00FF;  // RGB: 255, 0, 255
-  static constexpr uint32_t orange = 0xFF5F1E;   // RGB: 255, 95, 30
+  static constexpr uint32_t orange = 0xFF3C00;   // RGB: 255, 60, 0
   static constexpr uint32_t left = 0x00FFFF;     // Cyan
   static constexpr uint32_t right = 0xFF00FF;    // Magenta
   static constexpr uint32_t green = 0x00FF00;    // RGB: 0, 255, 0

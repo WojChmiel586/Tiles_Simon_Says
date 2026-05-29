@@ -2,10 +2,15 @@
 #include <Adafruit_NeoPixel.h>
 #include <esp_now.h>  //now the ESP-NOW stuff....
 #include <WiFi.h>
+#include <vector>
+#include <memory>
 
 #include "Board.h"
 #include "Game.h"
+#include "Menu.h"
 #include "SimonSays.h"
+#include "JumpRope.h"
+#include "Calibration.h"
 #include "Colours.h"
 #include "ESPNowStruct.h"
 
@@ -14,7 +19,6 @@
 
 int ledPins[16] = { 9, 15, 38, 42, 10, 16, 37, 41, 11, 17, 36, 40, 12, 18, 35, 39 };
 Board board;
-unsigned long currentMillis = 0;
 //------------------------------------ESP NOW STUFF--------------------------------------------------------------------------------------//
 
 // REPLACE WITH YOUR RECEIVER MAC Address = button and audio ESP
@@ -22,20 +26,36 @@ uint8_t broadcastAddress1[] = { 0xEC, 0xDA, 0x3B, 0x95, 0xC4, 0xE0 };  //send to
 uint8_t broadcastAddress2[] = { 0x3C, 0x84, 0x27, 0x31, 0xA0, 0x3C };  //send to yellobyte esp for sounds
 uint8_t broadcastAddress3[] = { 0x24, 0xEC, 0x4A, 0x00, 0x92, 0xF8 };  //send to results esp
 
-enum : byte {
-  Setup,
-  Gameplay,
-  Summary
-} state = Setup;
+// ---- Game instances --------------------------------------------------------
+Game* simonSays   = new SimonSays(board);
+Game* jumpRope    = new JumpRope(board);
+Game* calibration = new Calibration(board);
+Game* mainMenu    = new Menu(board);
+Game* currentGame = nullptr;
 
-//Game variables
-Game* simonSays = new SimonSays(board);
-bool sectionTest = false;
-unsigned long testInterval = 1000;
-unsigned long testTimer = 0;
-int section = 0;
+// ---- Button input routing --------------------------------------------------
+// Game-select buttons (95-98) switch the active game immediately.
+// In-game buttons (1-5) are passed to the current game via HandleInput().
+// 0 = idle / no press, ignored.
 
+// Values that trigger a game switch and which game they map to:
+//   95 → (reserved for future game)
+//   96 → Calibration (selects exercise via setExercise, then Init)
+//   97 → JumpRope
+//   98 → SimonSays
+// Values 1-5 are forwarded to currentGame->HandleInput().
+// Values 91-94 select a calibration exercise (sets exercise + switches to Calibration).
+// NOTE: exercise values 91-94 will likely be reassigned when button layout is finalised.
 
+static const int BUTTON_JUMPROPE    = 2;
+static const int BUTTON_SIMONSAYS   = 3;
+static const int BUTTON_CALIBRATION = 1;  // switches to calibration mode; exercise set by 1,2,3
+
+int  lastButtonValue = 0;   // previous frame's .b — for edge detection
+
+// ---- Delta time ------------------------------------------------------------
+unsigned long previousTime = 0;
+unsigned long deltaTime    = 0;
 // the setup routine runs once when you press reset:--------------------------------------------------
 void setup() {
   // 1. Initialize Serial FIRST (for debugging)
@@ -82,47 +102,107 @@ void setup() {
 
   // Initialise game specific stuff
   simonSays->Init();
+  jumpRope->Init();
+  calibration->Init();
+  mainMenu->Init();
+  previousTime = millis();
+  currentGame = mainMenu;   // default game on boot
 }
 
 //=============================================================================================================
 void loop() 
 {
-  currentMillis = millis();
+  unsigned long currentTime = millis();
+  deltaTime     = (currentTime - previousTime);
+  previousTime  = currentTime;
+
   board.processRecievedData();
 
-  if(currentMillis - testTimer >= testInterval)
-  {
-    sectionTest = false;
-    testTimer = currentMillis;
-    section++;
-    if(section >= 12)
-    section = 0;
-  }
-  if (!sectionTest)
-  {
-    Tile::LEDsections m_section = static_cast<Tile::LEDsections>(section);
-    board.light(0, Colours::blue, m_section);
-    board.light(1, Colours::blue, m_section);
-    board.light(2, Colours::blue, m_section);
-    board.light(3, Colours::blue, m_section);
-    board.light(4, Colours::red, m_section);
-    board.light(5, Colours::red, m_section);
-    board.light(6, Colours::red, m_section);
-    board.light(7, Colours::red, m_section);
-    board.light(8, Colours::green, m_section);
-    board.light(9, Colours::green, m_section);
-    board.light(10, Colours::green, m_section);
-    board.light(11, Colours::green, m_section);
-    board.light(12, Colours::white, m_section);
-    board.light(13, Colours::white, m_section);
-    board.light(14, Colours::white, m_section);
-    board.light(15, Colours::white, m_section);
+  // --- Read button input (edge-triggered: only act on a new press) ----------
+  int buttonValue = board.getStructFront()[4].b;
 
-    sectionTest = true;
+
+
+  if (buttonValue != lastButtonValue)   // value changed this frame
+  {
+    Serial.print("Recieved a button press: ");
+    Serial.println(buttonValue);
+    lastButtonValue = buttonValue;
+
+      if (buttonValue == 0)
+      {
+        currentGame = mainMenu;
+        currentGame->Init();
+      }
+      // --- Game-select tier (0-5) ----------------------------------------
+      else if (buttonValue == BUTTON_JUMPROPE)
+      {
+        Serial.println("Switching to JumpRope");
+        currentGame = jumpRope;
+        currentGame->Init();
+      }
+      else if (buttonValue == BUTTON_SIMONSAYS)
+      {
+        Serial.println("Switching to SimonSays");
+        currentGame = simonSays;
+        currentGame->Init();
+      }
+      else if (buttonValue == BUTTON_CALIBRATION)
+      {
+        Serial.println("Switching to Calibration");
+        currentGame = calibration;
+        static_cast<Calibration*>(calibration)->setExercise(91);
+        currentGame->Init();
+      }
+      // --- Calibration exercise select (91-98) -----------------------------
+      // Switches to Calibration and selects the exercise in one button press.
+      // Values will be reassigned when button layout is finalised.
+      else if (buttonValue >= 91 && buttonValue <= 98)
+      {
+        currentGame->HandleInput(buttonValue);
+      }
   }
 
-  //Run the game
-  //simonSays->Run(millis() - currentMillis);
+  // --- Run the active game --------------------------------------------------
+  currentGame->Run(deltaTime);
+
 }  //end of loop
 
-//---------------------------------------FUNCTIONALITY-------------------------------------------------//
+//---------------------------------------TEST CODE-------------------------------------------------//
+
+
+  // bool sectionTest = false;
+  // unsigned long testInterval = 1000;
+  // unsigned long testTimer = 0;
+  // int section = 0;
+  // if(currentMillis - testTimer >= testInterval)
+  // {
+  //   sectionTest = false;
+  //   testTimer = currentMillis;
+  //   section++;
+  //   if(section >= 12)
+  //   section = 0;
+  // }
+  // if (!sectionTest)
+  // {
+  //   Tile::LEDsections m_section = static_cast<Tile::LEDsections>(section);
+  //   board.light(0, Colours::blue, m_section);
+  //   board.light(1, Colours::blue, m_section);
+  //   board.light(2, Colours::blue, m_section);
+  //   board.light(3, Colours::blue, m_section);
+  //   board.light(4, Colours::red, m_section);
+  //   board.light(5, Colours::red, m_section);
+  //   board.light(6, Colours::red, m_section);
+  //   board.light(7, Colours::red, m_section);
+  //   board.light(8, Colours::green, m_section);
+  //   board.light(9, Colours::green, m_section);
+  //   board.light(10, Colours::green, m_section);
+  //   board.light(11, Colours::green, m_section);
+  //   board.light(12, Colours::white, m_section);
+  //   board.light(13, Colours::white, m_section);
+  //   board.light(14, Colours::white, m_section);
+  //   board.light(15, Colours::white, m_section);
+
+  //   sectionTest = true;
+  // }
+

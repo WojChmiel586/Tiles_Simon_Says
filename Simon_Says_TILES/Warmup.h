@@ -9,6 +9,7 @@ class Warmup : public Game
   
   void Run(unsigned long dt) override;
   void Init() override;
+  void HandleInput(int input) override;
 
 
   private:

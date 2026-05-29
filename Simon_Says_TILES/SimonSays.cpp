@@ -5,8 +5,27 @@ SimonSays::SimonSays(Board& game_board) : Game(game_board)
 
 }
 
+void SimonSays::HandleInput(int input)
+{
+  // Buttons 1-5 available for future SimonSays in-game options
+  // e.g. difficulty, hints, etc.
+  (void)input;
+}
+
 void SimonSays::Init()
 {
+  board.wipeResults();
+  game_sequence.clear();
+  player_sequence.clear();
+  board.clearAll();
+  playerTurn = false;
+  playerFailed = false;
+  gameEnd = false;
+  blinkCount = 0;
+  sequenceIdx = 0;
+  lastTileUpdate = 0;
+  lastTile = -1;
+  prevSequenceLength = 0;
   game_sequence.reserve(10);
   player_sequence.reserve(10);
   game_sequence.emplace_back(13);
@@ -128,34 +147,39 @@ void SimonSays::Run(unsigned long dt)
         else if (pressedTile != game_sequence.at(sequenceIdx) && pressedTile != lastTile && sequenceIdx != 0) {
           //CODE WHEN TILE DOESN'T MATCH SEQUENCE
           //SOME SORT OF INDICATION OF FAILURE
+          //Send Succcess sounds to audio ESP
+          struct_message_all audioMessage;
+          audioMessage.id = 6;
+          audioMessage.js = 3;
+          board.sendToAudio(audioMessage);
+
 
           finalScore = game_sequence.size();
-          //CLEAR BOARD AND RESTART
-          board.clearAll();
-          game_sequence.clear();
-          game_sequence.emplace_back(13);
-          sequenceIdx = 0;
-          prevSequenceLength = 0;
           playerFailed = true;
+          blinkTime = millis();  // start blink timer immediately
 
-          //CHANGE WHERE DATA IS SENT
-          //Serial.println("Player Lost");
-          //myResults.id = 6;
-          //myResults.eA = finalScore;
-          //esp_err_t result1 = esp_now_send(broadcastAddress3, (uint8_t *)&myResults, sizeof(myResults));
+          struct_message_all results;
+          results.id = 6;
+          results.eA = finalScore - 1;
+          board.sendToResults(results);
         }
       }
     }
     //END STATE FOR THE GAME WHEN PLAYER FAILS
     if(playerFailed)
     {
-      //BLINK THE BOARD LIGHTS RED TO INDICATE FAILURE
-      if (millis() - blinkTime >= blinkInterval)
+      if (millis() - blinkTime >= blinkInterval && !gameEnd)
       {
-        board.blinkBoard(Colours::red);
         blinkTime = millis();
+        board.blinkBoard(Colours::red);
+        blinkCount++;
+
+        if (blinkCount >= FAIL_BLINKS * 2 && !gameEnd)  // *2 because each blink = on + off
+        {
+          board.clearAll();
+          gameEnd = true;
+        }
       }
-      //BUTTON CONTROL OR SOMETHING TO RESTART THE GAME? FOR NOW WE NEED TO CUT POWER TO RESTART
     }
 
 }

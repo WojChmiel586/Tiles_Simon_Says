@@ -14,3 +14,9 @@ void Warmup::Run(unsigned long dt)
 {
 
 }
+
+void Warmup::HandleInput(int input)
+{
+  // Buttons 1-5 available for future Warmup in-game options
+  (void)input;
+}

@@ -15,8 +15,12 @@ enum LEDsections : byte {
   BOTTOM_HALF,
   LEFT_HALF,
   RIGHT_HALF,
+  LEFT_LINE_VERTICAL,
   CENTRE_LINE_VERTICAL,
+  RIGHT_LINE_VERTICAL,
+  TOP_LINE_HORIZONTAL,
   CENTRE_LINE_HORIZONTAL,
+  BOTTOM_LINE_HORIZONTAL,
   TOP_LEFT,
   TOP_RIGHT,
   BOTTOM_RIGHT,
@@ -43,8 +47,12 @@ struct LEDSegment
   static std::vector <LEDSegment> HalfUp;
   static std::vector <LEDSegment> HalfDown;
   static std::vector <LEDSegment> Outline;
-  static std::vector <LEDSegment> CentreVert;
+  static std::vector <LEDSegment> LeftVert;
+  static std::vector <LEDSegment> CentreVert;  
+  static std::vector <LEDSegment> RightVert;
+  static std::vector <LEDSegment> TopHoriz;
   static std::vector <LEDSegment> CentreHoriz;
+  static std::vector <LEDSegment> BottomHoriz;
   static std::vector <LEDSegment> Cross;
 
 

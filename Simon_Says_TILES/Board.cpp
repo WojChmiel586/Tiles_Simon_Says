@@ -122,7 +122,7 @@ bool Board::sendToResults(struct_message_all message)
     return sendMessage(resultsAddress, message);
 }
 
-void Board::onDataSent(const uint8_t *mac_addr, esp_now_send_status_t status)
+void Board::onDataSent(const esp_now_send_info_t* send_info, esp_now_send_status_t status)
 {
     Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
 }
@@ -160,6 +160,14 @@ void Board::processRecievedData()
     }
 }
 
+void Board::wipeResults()
+{
+    struct_message_all msg;
+    memset(&msg, 0, sizeof(msg));
+    msg.id = 6;
+    sendToResults(msg);
+}
+
 void Board::updateFromESPNOW(struct_message_all boards[]) {
     auto mapColumn = [&](int columnIndex, int idx0, int idx1, int idx2, int idx3) 
     {
@@ -183,6 +191,25 @@ int Board::pressedTile() {
         }
     }
     return -1;
+}
+
+bool Board::tilePressed(int idx, int weightOn) const
+{
+    if (idx < 0 || idx >= TILE_COUNT) return false;
+    return (tiles[idx]->getToeSensor()  > weightOn ||
+            tiles[idx]->getHeelSensor() > weightOn);
+}
+
+int Board::toeSensor(int idx) const
+{
+    if (idx < 0 || idx >= TILE_COUNT) return 0;
+    return tiles[idx]->getToeSensor();
+}
+
+int Board::heelSensor(int idx) const
+{
+    if (idx < 0 || idx >= TILE_COUNT) return 0;
+    return tiles[idx]->getHeelSensor();
 }
 
 void Board::lightAll()
