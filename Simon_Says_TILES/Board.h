@@ -31,7 +31,7 @@ public:
     bool sendToResults(struct_message_all message);
 
     //Static callbacks for ESP-NOW
-    static void onDataSent(const uint8_t *mac_addr, esp_now_send_status_t status);
+    static void onDataSent(const esp_now_send_info_t* send_info, esp_now_send_status_t status);
     static void onDataReceived(const uint8_t *mac_addr, const uint8_t *incomingData, int len);
 
     //Recieve data

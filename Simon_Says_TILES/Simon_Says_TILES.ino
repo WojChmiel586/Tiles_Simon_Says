@@ -7,6 +7,7 @@
 
 #include "Board.h"
 #include "Game.h"
+#include "Menu.h"
 #include "SimonSays.h"
 #include "JumpRope.h"
 #include "Calibration.h"
@@ -29,6 +30,7 @@ uint8_t broadcastAddress3[] = { 0x24, 0xEC, 0x4A, 0x00, 0x92, 0xF8 };  //send to
 Game* simonSays   = new SimonSays(board);
 Game* jumpRope    = new JumpRope(board);
 Game* calibration = new Calibration(board);
+Game* mainMenu    = new Menu(board);
 Game* currentGame = nullptr;
 
 // ---- Button input routing --------------------------------------------------
@@ -45,9 +47,9 @@ Game* currentGame = nullptr;
 // Values 91-94 select a calibration exercise (sets exercise + switches to Calibration).
 // NOTE: exercise values 91-94 will likely be reassigned when button layout is finalised.
 
-static const int BUTTON_JUMPROPE    = 97;
-static const int BUTTON_SIMONSAYS   = 98;
-static const int BUTTON_CALIBRATION = 96;  // switches to calibration mode; exercise set by 91-94
+static const int BUTTON_JUMPROPE    = 2;
+static const int BUTTON_SIMONSAYS   = 3;
+static const int BUTTON_CALIBRATION = 1;  // switches to calibration mode; exercise set by 1,2,3
 
 int  lastButtonValue = 0;   // previous frame's .b — for edge detection
 
@@ -102,9 +104,9 @@ void setup() {
   simonSays->Init();
   jumpRope->Init();
   calibration->Init();
+  mainMenu->Init();
   previousTime = millis();
-  currentGame = jumpRope;   // default game on boot
-  lastButtonValue = 0;
+  currentGame = mainMenu;   // default game on boot
 }
 
 //=============================================================================================================
@@ -123,10 +125,13 @@ void loop()
   {
     lastButtonValue = buttonValue;
 
-    if (buttonValue != 0)               // 0 = idle, ignore
-    {
-      // --- Game-select tier (95-98) ----------------------------------------
-      if (buttonValue == BUTTON_JUMPROPE)
+      if (buttonValue == 0)
+      {
+        currentGame = mainMenu;
+        currentGame->Init();
+      }
+      // --- Game-select tier (0-5) ----------------------------------------
+      else if (buttonValue == BUTTON_JUMPROPE)
       {
         Serial.println("Switching to JumpRope");
         currentGame = jumpRope;
@@ -142,28 +147,16 @@ void loop()
       {
         Serial.println("Switching to Calibration");
         currentGame = calibration;
+        static_cast<Calibration*>(calibration)->setExercise(91);
         currentGame->Init();
       }
-      // --- Calibration exercise select (91-94) -----------------------------
+      // --- Calibration exercise select (91-98) -----------------------------
       // Switches to Calibration and selects the exercise in one button press.
       // Values will be reassigned when button layout is finalised.
-      else if (buttonValue >= 91 && buttonValue <= 94)
+      else if (buttonValue >= 91 && buttonValue <= 98)
       {
-        Serial.print("Calibration exercise: ");
-        Serial.println(buttonValue);
-        static_cast<Calibration*>(calibration)->setExercise(buttonValue);
-        currentGame = calibration;
-        currentGame->Init();
-      }
-      // --- In-game tier (1-5): forward to current game ---------------------
-      else if (buttonValue >= 1 && buttonValue <= 5)
-      {
-        Serial.print("In-game input: ");
-        Serial.println(buttonValue);
         currentGame->HandleInput(buttonValue);
       }
-      // values 95 reserved — add future games here
-    }
   }
 
   // --- Run the active game --------------------------------------------------

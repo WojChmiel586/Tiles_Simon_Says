@@ -12,6 +12,7 @@ class Menu : public Game
 
   void Init() override;
   void Run(unsigned long dt) override;
+  void HandleInput(int input) override;
 
   private:
 

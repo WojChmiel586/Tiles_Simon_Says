@@ -122,7 +122,7 @@ bool Board::sendToResults(struct_message_all message)
     return sendMessage(resultsAddress, message);
 }
 
-void Board::onDataSent(const esp_now_send_info_t *s, esp_now_send_status_t status)
+void Board::onDataSent(const esp_now_send_info_t* send_info, esp_now_send_status_t status)
 {
     Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
 }

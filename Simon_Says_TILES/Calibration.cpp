@@ -14,6 +14,7 @@ void Calibration::setExercise(int exerciseNumber)
 
 void Calibration::Init()
 {
+    board.clearAll();
     loadSensorData();
     startMillis      = millis();
     exCounter        = 0;

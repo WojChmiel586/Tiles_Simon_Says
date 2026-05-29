@@ -44,4 +44,11 @@ void Menu::Run(unsigned long dt)
 
     sectionTest = true;
   }
+  
+}
+
+void Menu::HandleInput(int input)
+{
+  // Buttons 1-5 available for future Warmup in-game options
+  (void)input;
 }
