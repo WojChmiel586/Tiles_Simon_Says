@@ -60,6 +60,7 @@ void JumpRope::Run(unsigned long dt)
 
         case ROW1TOP:
             if (currentMillis - startMillis >= interJump) {
+                board.clearAll();
                 startTile = 0; 
                 endTile = 4;
                 lightRow(Tile::TOP_LINE_HORIZONTAL, levColor);
@@ -297,6 +298,7 @@ void JumpRope::sendResultMessage(int js, int jc)
     msg.id = 6;
     msg.jc = jc;
     msg.js = js;
+    msg.b = 1;
     // airtime is hard-coded to lineDelay for now; extend if needed
     msg.t  = lineDelay;
     board.sendToLaptop(msg);

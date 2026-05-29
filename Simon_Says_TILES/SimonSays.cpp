@@ -23,6 +23,7 @@ void SimonSays::Init()
   sequenceIdx = 0;
   lastTileUpdate = 0;
   lastTile = -1;
+  prevSequenceLength = 0;
   game_sequence.reserve(10);
   player_sequence.reserve(10);
   game_sequence.emplace_back(13);
