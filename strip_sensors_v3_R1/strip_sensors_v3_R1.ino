@@ -23,16 +23,11 @@ struct_message_all mySensors;
 esp_now_peer_info_t peerInfo;
 
 // Callback tracks how many sends completed
-void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
+void OnDataSent(const esp_now_send_info_t* send_info, esp_now_send_status_t status) {
   callbacksReceived++;
   
   if (status != ESP_NOW_SEND_SUCCESS) 
   {
-    Serial.print("Send failed to: ");
-    char macStr[18];
-    snprintf(macStr, sizeof(macStr), "%02x:%02x:%02x:%02x:%02x:%02x",
-             mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
-    Serial.println(macStr);
   }
 }
 

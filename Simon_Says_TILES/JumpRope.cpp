@@ -205,7 +205,7 @@ void JumpRope::Run(unsigned long dt)
                 jumpState = liftOff + landing + 1;
                 jumpCount++;
 
-                sendSoundMessage(jumpState, jumpCount);
+                //sendSoundMessage(jumpState, jumpCount);
                 sendResultMessage(jumpState, jumpCount);
 
 
@@ -260,6 +260,10 @@ void JumpRope::Run(unsigned long dt)
         // ----------------------------------------------------------------
         case GAMEEND:
             // Stay idle; caller can detect this state and trigger Init()
+            if (currentMillis - startMillis >= 800)
+            {
+
+            }
             break;
     }
 }
@@ -301,7 +305,7 @@ void JumpRope::sendResultMessage(int js, int jc)
     msg.b = 1;
     // airtime is hard-coded to lineDelay for now; extend if needed
     msg.t  = lineDelay;
-    board.sendToLaptop(msg);
+    board.sendToResults(msg);
 }
 
 // =============================================================================

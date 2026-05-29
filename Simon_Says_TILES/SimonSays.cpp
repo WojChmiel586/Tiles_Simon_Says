@@ -145,7 +145,11 @@ void SimonSays::Run(unsigned long dt)
         else if (pressedTile != game_sequence.at(sequenceIdx) && pressedTile != lastTile && sequenceIdx != 0) {
           //CODE WHEN TILE DOESN'T MATCH SEQUENCE
           //SOME SORT OF INDICATION OF FAILURE
-
+          //Send Succcess sounds to audio ESP
+          struct_message_all audioMessage;
+          audioMessage.id = 6;
+          audioMessage.js = 3;
+          board.sendToAudio(audioMessage);
           finalScore = game_sequence.size();
           playerFailed = true;
           blinkTime = millis();  // start blink timer immediately
@@ -163,6 +167,10 @@ void SimonSays::Run(unsigned long dt)
 
         if (blinkCount >= FAIL_BLINKS * 2)  // *2 because each blink = on + off
         {
+          struct_message_all simonMessage;
+          simonMessage.id = 6;
+          simonMessage.eA = finalScore - 1;
+          board.sendToResults(simonMessage);
           Init();  // restart from the beginning
         }
       }

@@ -121,8 +121,12 @@ void loop()
   // --- Read button input (edge-triggered: only act on a new press) ----------
   int buttonValue = board.getStructFront()[4].b;
 
+
+
   if (buttonValue != lastButtonValue)   // value changed this frame
   {
+    Serial.print("Recieved a button press: ");
+    Serial.println(buttonValue);
     lastButtonValue = buttonValue;
 
       if (buttonValue == 0)
