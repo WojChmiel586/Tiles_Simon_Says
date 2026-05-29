@@ -160,6 +160,14 @@ void Board::processRecievedData()
     }
 }
 
+void Board::wipeResults()
+{
+    struct_message_all msg;
+    memset(&msg, 0, sizeof(msg));
+    msg.id = 6;
+    sendToResults(msg);
+}
+
 void Board::updateFromESPNOW(struct_message_all boards[]) {
     auto mapColumn = [&](int columnIndex, int idx0, int idx1, int idx2, int idx3) 
     {

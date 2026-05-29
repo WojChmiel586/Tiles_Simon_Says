@@ -15,6 +15,7 @@ void Calibration::setExercise(int exerciseNumber)
 void Calibration::Init()
 {
     board.clearAll();
+    board.wipeResults();
     loadSensorData();
     startMillis      = millis();
     exCounter        = 0;
@@ -117,27 +118,44 @@ bool Calibration::pressed(int idx) const { return toe(idx) > weightOn || heel(id
 
 void Calibration::prepCalib4()
 {
-    board.light(9,  Colours::cyan,    Tile::RIGHT_HALF);  // T10: right half, left colour
-    board.light(10, Colours::magenta, Tile::LEFT_HALF);   // T11: left half, right colour
+    board.light(13,  Colours::cyan,    Tile::RIGHT_HALF);  // T10: right half, left colour
+    board.light(14, Colours::magenta, Tile::LEFT_HALF);   // T11: left half, right colour
+    board.light(1,  Colours::cyan,    Tile::RIGHT_HALF);  // T10: right half, left colour
+    board.light(2, Colours::magenta, Tile::LEFT_HALF);   // T11: left half, right colour
 }
 
 void Calibration::stepBackLeft()
 {
-    board.light(9, Colours::cyan, Tile::RIGHT_HALF);
+    board.light(13, Colours::cyan, Tile::RIGHT_HALF); 
+    board.light(1, Colours::cyan, Tile::RIGHT_HALF); 
 }
 
 void Calibration::stepBackRight()
 {
+    board.light(14, Colours::magenta, Tile::LEFT_HALF);
+    board.light(2, Colours::magenta, Tile::LEFT_HALF);
+}
+
+void Calibration::stepBackLeftTap()
+{
+    board.light(9, Colours::cyan, Tile::RIGHT_HALF);  
+}
+
+void Calibration::stepBackRightTap()
+{
     board.light(10, Colours::magenta, Tile::LEFT_HALF);
 }
 
-void Calibration::clearT10()  { board.clear(9);  }
-void Calibration::clearT11()  { board.clear(10); }
+void Calibration::clearT14()  { board.clear(13);  }
+void Calibration::clearT15()  { board.clear(14); }
 
-void Calibration::clearT10T11()
+void Calibration::clearT14T15()
 {
-    board.clear(9);
-    board.clear(10);
+    board.clear(13);
+    board.clear(14);
+    board.clear(1);
+    board.clear(2);
+
 }
 
 void Calibration::clearRow3()
@@ -201,7 +219,7 @@ void Calibration::finishTapStep(int tileIdx, bool stepbackIsLeft, CalibState nex
     Serial.println(maxcount);
     mobScore++;
     tapcounter = 0;
-    if (stepbackIsLeft) stepBackLeft(); else stepBackRight();
+    if (stepbackIsLeft) stepBackLeftTap(); else stepBackRightTap();
     startMillis = millis();
     calibState  = nextState;
 }
@@ -212,7 +230,7 @@ void Calibration::finishTapStep(int tileIdx, bool stepbackIsLeft, CalibState nex
 
 void Calibration::sendResult(struct_message_all msg)
 {
-    board.sendToLaptop(msg);
+    board.sendToResults(msg);
 }
 
 // =============================================================================
@@ -232,7 +250,7 @@ void Calibration::runCalib1(unsigned long now)
 
         case MARCHSTART:
             if (now - startMillis >= (unsigned long)(stepDelay * 2)) {
-                clearT10T11();
+                clearT14T15();
                 stepBackLeft();
                 startMillis = now;
                 marchState  = MARCH1END;
@@ -241,7 +259,7 @@ void Calibration::runCalib1(unsigned long now)
 
         case MARCH1END:  // weight expected on T10 (tile 9)
             if (now - startMillis >= (unsigned long)stepDelay) {
-                clearT10T11();
+                clearT14T15();
                 stepBackRight();
                 startMillis = now;
                 marchState  = MARCH2END;
@@ -250,7 +268,7 @@ void Calibration::runCalib1(unsigned long now)
 
         case MARCH2END:  // weight expected on T11 (tile 10)
             if (now - startMillis >= (unsigned long)stepDelay) {
-                clearT10T11();
+                clearT14T15();
                 stepBackLeft();
                 exCounter++;
                 if (exCounter == 32) {
@@ -290,7 +308,7 @@ void Calibration::runCalib2(unsigned long now)
 
         case BAL1START:
             if (now - startMillis >= (unsigned long)(stepDelay * 2)) {
-                clearT10T11();
+                clearT14T15();
                 stepBackLeft();
                 startMillis = now;
                 balState    = BAL1END;
@@ -298,13 +316,13 @@ void Calibration::runCalib2(unsigned long now)
             break;
 
         case BAL1END:  // balance on left (T10): toe18>on, heel19>on, T11 both <on
-            if (sensorValue[18] > weightOn && sensorValue[19] > weightOn &&
-                sensorValue[20] < weightOn && sensorValue[21] < weightOn) {
+            if (sensorValue[26] > weightOn && sensorValue[27] > weightOn &&
+                sensorValue[28] < weightOn && sensorValue[29] < weightOn) {
                 balChecker++;
                 balanceAchieved = balChecker / 200;
             }
             if (now - startMillis >= (unsigned long)(balanceDelay * 2)) {
-                clearT10T11();
+                clearT14T15();
                 balanceScore   += balanceAchieved;
                 balChecker      = 0;
                 balanceAchieved = 0;
@@ -322,13 +340,13 @@ void Calibration::runCalib2(unsigned long now)
             break;
 
         case BAL2END:  // balance on right (T11)
-            if (sensorValue[18] < weightOn && sensorValue[19] < weightOn &&
-                sensorValue[20] > weightOn && sensorValue[21] > weightOn) {
+            if (sensorValue[26] < weightOn && sensorValue[27] < weightOn &&
+                sensorValue[28] > weightOn && sensorValue[29] > weightOn) {
                 balChecker++;
                 balanceAchieved = balChecker / 200;
             }
             if (now - startMillis >= (unsigned long)(balanceDelay * 2)) {
-                clearT10T11();
+                clearT14T15();
                 balanceScore   += balanceAchieved;
                 balChecker      = 0;
                 balanceAchieved = 0;
@@ -339,21 +357,23 @@ void Calibration::runCalib2(unsigned long now)
 
         case BAL3START:  // both toes – T10 TOP_RIGHT (Q2), T11 TOP_LEFT (Q1)
             if (now - startMillis >= (unsigned long)(stepDelay * 2)) {
-                board.light(9,  Colours::cyan,    Tile::TOP_RIGHT);  // T10 toe
-                board.light(10, Colours::magenta, Tile::TOP_LEFT);   // T11 toe
+                board.light(13,  Colours::cyan,    Tile::TOP_RIGHT);
+                board.light(1,  Colours::cyan,    Tile::TOP_RIGHT);                  // T10 toe
+                board.light(14, Colours::magenta, Tile::TOP_LEFT);                   // T11 toe
+                board.light(2, Colours::magenta, Tile::TOP_LEFT);
                 startMillis = now;
                 balState    = BAL3END;
             }
             break;
 
         case BAL3END:  // balance on toes: T10A>on, T11A>on, heels <on
-            if (sensorValue[18] > weightOn && sensorValue[19] < weightOn &&
-                sensorValue[20] > weightOn && sensorValue[21] < weightOn) {
+            if (sensorValue[26] > weightOn && sensorValue[27] < weightOn &&
+                sensorValue[28] > weightOn && sensorValue[29] < weightOn) {
                 balChecker++;
                 balanceAchieved = balChecker / 100;
             }
             if (now - startMillis >= (unsigned long)balanceDelay) {
-                clearT10T11();
+                clearT14T15();
                 balanceScore   += balanceAchieved;
                 balChecker      = 0;
                 balanceAchieved = 0;
@@ -364,21 +384,23 @@ void Calibration::runCalib2(unsigned long now)
 
         case BAL4START:  // both heels – T10 BOTTOM_RIGHT (Q4), T11 BOTTOM_LEFT (Q3)
             if (now - startMillis >= (unsigned long)(stepDelay * 2)) {
-                board.light(9,  Colours::cyan,    Tile::BOTTOM_RIGHT);  // T10 heel
-                board.light(10, Colours::magenta, Tile::BOTTOM_LEFT);   // T11 heel
+                board.light(13,  Colours::cyan,    Tile::BOTTOM_RIGHT);  // T10 heel
+                board.light(14, Colours::magenta, Tile::BOTTOM_LEFT);   // T11 heel
+                board.light(1,  Colours::cyan,    Tile::BOTTOM_RIGHT);
+                board.light(2, Colours::magenta, Tile::BOTTOM_LEFT); 
                 startMillis = now;
                 balState    = BAL4END;
             }
             break;
 
         case BAL4END:  // balance on heels: T10B>on, T11B>on, toes <on
-            if (sensorValue[18] < weightOn && sensorValue[19] > weightOn &&
-                sensorValue[20] < weightOn && sensorValue[21] > weightOn) {
+            if (sensorValue[26] < weightOn && sensorValue[27] > weightOn &&
+                sensorValue[28] < weightOn && sensorValue[29] > weightOn) {
                 balChecker++;
                 balanceAchieved = balChecker / 100;
             }
             if (now - startMillis >= (unsigned long)balanceDelay) {
-                clearT10T11();
+                clearT14T15();
                 balanceScore   += balanceAchieved;
                 balanceScore   /= 4;  // average across 4 phases
 
@@ -422,25 +444,31 @@ void Calibration::runCalib3(unsigned long now)
 
         case SIDE1START:  // left leg out – stand on T11, stripe left toward T9
             if (now - startMillis >= (unsigned long)(stepDelay * 2)) {
-                clearRow3();
+                board.clearAll();
                 // Stand-on: T11 LEFT_HALF magenta
-                board.light(10, Colours::magenta, Tile::LEFT_HALF);
+                board.light(14, Colours::magenta, Tile::LEFT_HALF);
                 // Direction indicators: T10 and T9 top stripe cyan
-                board.light(9,  Colours::cyan, Tile::CENTRE_LINE_HORIZONTAL);
-                board.light(8,  Colours::cyan, Tile::CENTRE_LINE_HORIZONTAL);
+                board.light(13,  Colours::cyan, Tile::CENTRE_LINE_HORIZONTAL);
+                board.light(12,  Colours::cyan, Tile::CENTRE_LINE_HORIZONTAL);
+
+                board.light(2, Colours::magenta, Tile::LEFT_HALF);
+                // Direction indicators: T10 and T9 top stripe cyan
+                board.light(1,  Colours::cyan, Tile::CENTRE_LINE_HORIZONTAL);
+                board.light(0,  Colours::cyan, Tile::CENTRE_LINE_HORIZONTAL);
+
                 startMillis = now;
                 sideState   = SIDE1END;
             }
             break;
 
         case SIDE1END:  // balance on right leg (T11)
-            if (sensorValue[18] < weightOn && sensorValue[19] < weightOn &&
-                sensorValue[20] > weightOn && sensorValue[21] > weightOn) {
+            if (sensorValue[26] < weightOn && sensorValue[27] < weightOn &&
+                sensorValue[28] > weightOn && sensorValue[29] > weightOn) {
                 balChecker++;
                 balanceAchieved = balChecker / 20;
             }
             if (now - startMillis >= (unsigned long)sideliftDelay) {
-                clearRow3();
+                board.clearAll();
                 prepCalib4();
                 balanceScoreSide += balanceAchieved;
                 balChecker        = 0;
@@ -453,23 +481,28 @@ void Calibration::runCalib3(unsigned long now)
 
         case SIDE2START:  // right leg out – stand on T10, stripe right toward T12
             if (now - startMillis >= (unsigned long)(stepDelay * 2)) {
-                clearRow3();
-                board.light(9,  Colours::cyan,    Tile::RIGHT_HALF);
-                board.light(10, Colours::magenta, Tile::CENTRE_LINE_HORIZONTAL);
-                board.light(11, Colours::magenta, Tile::CENTRE_LINE_HORIZONTAL);
+                board.clearAll();
+                board.light(13,  Colours::cyan,    Tile::RIGHT_HALF);
+                board.light(14, Colours::magenta, Tile::CENTRE_LINE_HORIZONTAL);
+                board.light(15, Colours::magenta, Tile::CENTRE_LINE_HORIZONTAL);
+
+                board.light(1,  Colours::cyan,    Tile::RIGHT_HALF);
+                board.light(2, Colours::magenta, Tile::CENTRE_LINE_HORIZONTAL);
+                board.light(3, Colours::magenta, Tile::CENTRE_LINE_HORIZONTAL);
+
                 startMillis = now;
                 sideState   = SIDE2END;
             }
             break;
 
         case SIDE2END:  // balance on left leg (T10)
-            if (sensorValue[18] > weightOn && sensorValue[19] > weightOn &&
-                sensorValue[20] < weightOn && sensorValue[21] < weightOn) {
+            if (sensorValue[26] > weightOn && sensorValue[27] > weightOn &&
+                sensorValue[28] < weightOn && sensorValue[29] < weightOn) {
                 balChecker++;
                 balanceAchieved = balChecker / 20;
             }
             if (now - startMillis >= (unsigned long)sideliftDelay) {
-                clearRow3();
+                board.clearAll();
                 prepCalib4();
                 balanceScoreSide += balanceAchieved;
                 balChecker        = 0;
@@ -531,14 +564,15 @@ void Calibration::runCalib4(unsigned long now)
     switch (calibState) {
         // ---- Prep: light T10/T11, wait stepDelaymob then switch on first tap tile ----
         case STEP1_PREP:
-            prepCalib4();
+            board.light(9,  Colours::cyan,    Tile::RIGHT_HALF);  // T10: right half, left colour
+            board.light(10, Colours::magenta, Tile::LEFT_HALF);   // T11: left half, right colour
             startMillis = now;
             calibState  = STEP1_WAIT_PREP_OFF_LIGHTS_ON;
             break;
 
         case STEP1_WAIT_PREP_OFF_LIGHTS_ON:
             if (now - startMillis >= (unsigned long)stepDelaymob) {
-                clearT10();
+                board.clear(9);
                 lightTapTile(5, Tile::BOTTOM_RIGHT, Colours::cyan);  // T6 Q4 (pos5)
                 startMillis = now;
                 calibState  = STEP1_LIGHTS_ON_WAIT_TAP;
@@ -555,7 +589,7 @@ void Calibration::runCalib4(unsigned long now)
 
         case STEP1_STEPBACK_LIGHTS2_ON:
             if (now - startMillis >= (unsigned long)stepDelaymob) {
-                clearT10();
+                board.clear(9);
                 lightTapTile(5, Tile::BOTTOM_LEFT, Colours::cyan);   // T6 Q3 (pos4)
                 startMillis = now;
                 calibState  = STEP2_LIGHTS_ON_WAIT_TAP;
@@ -570,7 +604,7 @@ void Calibration::runCalib4(unsigned long now)
 
         case STEP2_STEPBACK_LIGHTS3_ON:
             if (now - startMillis >= (unsigned long)stepDelaymob) {
-                clearT10();
+                board.clear(9);
                 lightTapTile(4, Tile::BOTTOM_RIGHT, Colours::cyan);  // T5 Q4 (pos5)
                 startMillis = now;
                 calibState  = STEP3_LIGHTS_ON_WAIT_TAP;
@@ -585,7 +619,7 @@ void Calibration::runCalib4(unsigned long now)
 
         case STEP3_STEPBACK_LIGHTS4_ON:
             if (now - startMillis >= (unsigned long)stepDelaymob) {
-                clearT10();
+                board.clear(9);
                 lightTapTile(8, Tile::RIGHT_HALF, Colours::cyan);    // T9 righthalftile (pos0)
                 startMillis = now;
                 calibState  = STEP4_LIGHTS_ON_WAIT_TAP;
@@ -600,7 +634,7 @@ void Calibration::runCalib4(unsigned long now)
 
         case STEP4_STEPBACK_LIGHTS5_ON:
             if (now - startMillis >= (unsigned long)stepDelaymob) {
-                clearT10();
+                board.clear(9);
                 lightTapTile(12, Tile::TOP_RIGHT, Colours::cyan);    // T13 Q2 (pos3)
                 startMillis = now;
                 calibState  = STEP5_LIGHTS_ON_WAIT_TAP;
@@ -615,7 +649,7 @@ void Calibration::runCalib4(unsigned long now)
 
         case STEP5_STEPBACK_LIGHTS6_ON:
             if (now - startMillis >= (unsigned long)stepDelaymob) {
-                clearT10();
+                board.clear(9);
                 lightTapTile(13, Tile::LEFT_HALF, Colours::cyan);    // T14 lefthalftile (pos1)
                 startMillis = now;
                 calibState  = STEP6_LIGHTS_ON_WAIT_TAP;
@@ -630,7 +664,7 @@ void Calibration::runCalib4(unsigned long now)
 
         case STEP6_STEPBACK_LIGHTS7_ON:
             if (now - startMillis >= (unsigned long)stepDelaymob) {
-                clearT10();
+                board.clear(9);
                 lightTapTile(6, Tile::LEFT_HALF, Colours::cyan);     // T7 lefthalftile (pos1)
                 startMillis = now;
                 calibState  = STEP7_LIGHTS_ON_WAIT_TAP;
@@ -645,7 +679,7 @@ void Calibration::runCalib4(unsigned long now)
 
         case STEP7_STEPBACK_LIGHTS8_ON:
             if (now - startMillis >= (unsigned long)stepDelaymob) {
-                clearT10();
+                board.clear(9);
                 lightTapTile(9, Tile::RIGHT_HALF, Colours::cyan);    // T10 righthalftile (pos0)
                 startMillis = now;
                 calibState  = STEP8_LIGHTS_ON_WAIT_TAP;
@@ -679,7 +713,7 @@ void Calibration::runCalib4(unsigned long now)
 
         case STEP9_STEPBACK_LIGHTS10_ON:
             if (now - startMillis >= (unsigned long)stepDelaymob) {
-                clearT11();
+                clearTile(10);
                 lightTapTile(6, Tile::BOTTOM_RIGHT, Colours::magenta); // T7 Q4 (pos5)
                 startMillis = now;
                 calibState  = STEP10_LIGHTS_ON_WAIT_TAP;
@@ -694,7 +728,7 @@ void Calibration::runCalib4(unsigned long now)
 
         case STEP10_STEPBACK_LIGHTS11_ON:
             if (now - startMillis >= (unsigned long)stepDelaymob) {
-                clearT11();
+                clearTile(10);
                 lightTapTile(7, Tile::BOTTOM_LEFT, Colours::magenta); // T8 Q3 (pos4)
                 startMillis = now;
                 calibState  = STEP11_LIGHTS_ON_WAIT_TAP;
@@ -709,7 +743,7 @@ void Calibration::runCalib4(unsigned long now)
 
         case STEP11_STEPBACK_LIGHTS12_ON:
             if (now - startMillis >= (unsigned long)stepDelaymob) {
-                clearT11();
+                clearTile(10);
                 lightTapTile(11, Tile::LEFT_HALF, Colours::magenta);  // T12 lefthalftile (pos1)
                 startMillis = now;
                 calibState  = STEP12_LIGHTS_ON_WAIT_TAP;
@@ -724,7 +758,7 @@ void Calibration::runCalib4(unsigned long now)
 
         case STEP12_STEPBACK_LIGHTS13_ON:
             if (now - startMillis >= (unsigned long)stepDelaymob) {
-                clearT11();
+                clearTile(10);
                 lightTapTile(15, Tile::TOP_LEFT, Colours::magenta);   // T16 Q1 (pos2)
                 startMillis = now;
                 calibState  = STEP13_LIGHTS_ON_WAIT_TAP;
@@ -739,7 +773,7 @@ void Calibration::runCalib4(unsigned long now)
 
         case STEP13_STEPBACK_LIGHTS14_ON:
             if (now - startMillis >= (unsigned long)stepDelaymob) {
-                clearT11();
+                clearTile(10);
                 lightTapTile(14, Tile::RIGHT_HALF, Colours::magenta); // T15 righthalftile (pos0)
                 startMillis = now;
                 calibState  = STEP14_LIGHTS_ON_WAIT_TAP;
@@ -754,7 +788,7 @@ void Calibration::runCalib4(unsigned long now)
 
         case STEP14_STEPBACK_LIGHTS15_ON:
             if (now - startMillis >= (unsigned long)stepDelaymob) {
-                clearT11();
+                clearTile(10);
                 lightTapTile(5, Tile::RIGHT_HALF, Colours::magenta);  // T6 righthalftile (pos0)
                 startMillis = now;
                 calibState  = STEP15_LIGHTS_ON_WAIT_TAP;
@@ -769,7 +803,7 @@ void Calibration::runCalib4(unsigned long now)
 
         case STEP15_STEPBACK_LIGHTS16_ON:
             if (now - startMillis >= (unsigned long)(stepDelaymob * 2)) {
-                clearT11();
+                clearTile(10);
                 lightTapTile(10, Tile::LEFT_HALF, Colours::magenta);  // T11 lefthalftile (pos1)
                 startMillis = now;
                 calibState  = STEP16_LIGHTS_ON_WAIT_TAP;
@@ -931,8 +965,8 @@ void Calibration::runCalib6(unsigned long now)
 {
     // All squat sensor checks: all four sensors on T10/T11 must be > weightOn
     auto allOn = [&]() {
-        return sensorValue[18] > weightOn && sensorValue[19] > weightOn &&
-               sensorValue[20] > weightOn && sensorValue[21] > weightOn;
+        return sensorValue[26] > weightOn && sensorValue[27] > weightOn &&
+               sensorValue[28] > weightOn && sensorValue[29] > weightOn;
     };
 
     switch (squatState) {
@@ -946,10 +980,12 @@ void Calibration::runCalib6(unsigned long now)
         // ---- Narrow squats 1-3 ----
         case SQUAT1START:
             if (now - startMillis >= (unsigned long)(stepDelay * 4)) {
-                clearT10T11();
+                clearT14T15();
                 // Narrow stand: T10 RIGHT_HALF white, T11 LEFT_HALF white
-                board.light(9,  Colours::white, Tile::RIGHT_HALF);
-                board.light(10, Colours::white, Tile::LEFT_HALF);
+                board.light(13,  Colours::white, Tile::RIGHT_HALF);
+                board.light(14, Colours::white, Tile::LEFT_HALF);
+                board.light(1,  Colours::white, Tile::RIGHT_HALF);
+                board.light(2, Colours::white, Tile::LEFT_HALF);
                 startMillis = now;
                 squatState  = SQUAT1END;
             }
@@ -958,7 +994,7 @@ void Calibration::runCalib6(unsigned long now)
             squatCounter = 0;
             if (allOn()) { squatCounter++; squatScore = 100; }
             if (now - startMillis >= (unsigned long)squat1Delay) {
-                clearT10T11();
+                clearT14T15();
                 strengthScore += squatScore;
                 squatScore     = 0;
                 startMillis    = now;
@@ -968,8 +1004,11 @@ void Calibration::runCalib6(unsigned long now)
 
         case SQUAT2START:
             if (now - startMillis >= (unsigned long)(stepDelay * 4)) {
-                board.light(9,  Colours::white, Tile::RIGHT_HALF);
-                board.light(10, Colours::white, Tile::LEFT_HALF);
+                board.light(13,  Colours::white, Tile::RIGHT_HALF);
+                board.light(14, Colours::white, Tile::LEFT_HALF);
+
+                board.light(1,  Colours::white, Tile::RIGHT_HALF);
+                board.light(2, Colours::white, Tile::LEFT_HALF);
                 startMillis = now;
                 squatState  = SQUAT2END;
             }
@@ -978,7 +1017,7 @@ void Calibration::runCalib6(unsigned long now)
             squatCounter = 0;
             if (allOn()) { squatCounter++; squatScore = 100; }
             if (now - startMillis >= (unsigned long)squat1Delay) {
-                clearT10T11();
+                clearT14T15();
                 strengthScore += squatScore;
                 squatScore     = 0;
                 startMillis    = now;
@@ -988,8 +1027,11 @@ void Calibration::runCalib6(unsigned long now)
 
         case SQUAT3START:
             if (now - startMillis >= (unsigned long)(stepDelay * 4)) {
-                board.light(9,  Colours::white, Tile::RIGHT_HALF);
-                board.light(10, Colours::white, Tile::LEFT_HALF);
+                board.light(13,  Colours::white, Tile::RIGHT_HALF);
+                board.light(14, Colours::white, Tile::LEFT_HALF);
+
+                board.light(1,  Colours::white, Tile::RIGHT_HALF);
+                board.light(2, Colours::white, Tile::LEFT_HALF);
                 startMillis = now;
                 squatState  = SQUAT3END;
             }
@@ -998,7 +1040,7 @@ void Calibration::runCalib6(unsigned long now)
             squatCounter = 0;
             if (allOn()) { squatCounter++; squatScore = 100; }
             if (now - startMillis >= (unsigned long)squat1Delay) {
-                clearT10T11();
+                clearT14T15();
                 strengthScore += squatScore;
                 squatScore     = 0;
                 startMillis    = now;
@@ -1009,17 +1051,24 @@ void Calibration::runCalib6(unsigned long now)
         // ---- Wide squats 4-6 ----
         case SQUAT4PREP:
             // Wide prep: T10 LEFT_HALF cyan, T11 RIGHT_HALF magenta
-            board.light(9,  Colours::cyan,    Tile::LEFT_HALF);
-            board.light(10, Colours::magenta, Tile::RIGHT_HALF);
+            board.light(13,  Colours::cyan,    Tile::LEFT_HALF);
+            board.light(14, Colours::magenta, Tile::RIGHT_HALF);
+
+            board.light(1,  Colours::cyan,    Tile::LEFT_HALF);
+            board.light(2, Colours::magenta, Tile::RIGHT_HALF);
+
             startMillis = now;
             squatState  = SQUAT4START;
             break;
 
         case SQUAT4START:
             if (now - startMillis >= (unsigned long)(stepDelay * 4)) {
-                clearT10T11();
-                board.light(9,  Colours::white, Tile::LEFT_HALF);
-                board.light(10, Colours::white, Tile::RIGHT_HALF);
+                clearT14T15();
+                board.light(13, Colours::white, Tile::LEFT_HALF);
+                board.light(14, Colours::white, Tile::RIGHT_HALF);
+
+                board.light(1, Colours::white, Tile::LEFT_HALF);
+                board.light(2, Colours::white, Tile::RIGHT_HALF);
                 startMillis = now;
                 squatState  = SQUAT4END;
             }
@@ -1028,7 +1077,7 @@ void Calibration::runCalib6(unsigned long now)
             squatCounter = 0;
             if (allOn()) { squatCounter++; squatScore = 100; }
             if (now - startMillis >= (unsigned long)squat2Delay) {
-                clearT10T11();
+                clearT14T15();
                 strengthScore += squatScore;
                 squatScore     = 0;
                 startMillis    = now;
@@ -1038,8 +1087,11 @@ void Calibration::runCalib6(unsigned long now)
 
         case SQUAT5START:
             if (now - startMillis >= (unsigned long)(stepDelay * 4)) {
-                board.light(9,  Colours::white, Tile::LEFT_HALF);
-                board.light(10, Colours::white, Tile::RIGHT_HALF);
+                board.light(13,  Colours::white, Tile::LEFT_HALF);
+                board.light(14, Colours::white, Tile::RIGHT_HALF);
+
+                board.light(1,  Colours::white, Tile::LEFT_HALF);
+                board.light(2, Colours::white, Tile::RIGHT_HALF);
                 startMillis = now;
                 squatState  = SQUAT5END;
             }
@@ -1048,7 +1100,7 @@ void Calibration::runCalib6(unsigned long now)
             squatCounter = 0;
             if (allOn()) { squatCounter++; squatScore = 100; }
             if (now - startMillis >= (unsigned long)squat2Delay) {
-                clearT10T11();
+                clearT14T15();
                 strengthScore += squatScore;
                 squatScore     = 0;
                 startMillis    = now;
@@ -1058,8 +1110,11 @@ void Calibration::runCalib6(unsigned long now)
 
         case SQUAT6START:
             if (now - startMillis >= (unsigned long)(stepDelay * 4)) {
-                board.light(9,  Colours::white, Tile::LEFT_HALF);
-                board.light(10, Colours::white, Tile::RIGHT_HALF);
+                board.light(13,  Colours::white, Tile::LEFT_HALF);
+                board.light(14, Colours::white, Tile::RIGHT_HALF);
+
+                board.light(1,  Colours::white, Tile::LEFT_HALF);
+                board.light(2, Colours::white, Tile::RIGHT_HALF);
                 startMillis = now;
                 squatState  = SQUAT6END;
             }
@@ -1068,7 +1123,7 @@ void Calibration::runCalib6(unsigned long now)
             squatCounter = 0;
             if (allOn()) { squatCounter++; squatScore = 100; }
             if (now - startMillis >= (unsigned long)squat2Delay) {
-                clearT10T11();
+                clearT14T15();
                 strengthScore += squatScore;
                 strengthScore  /= 6;
 
@@ -1111,36 +1166,56 @@ void Calibration::runCalib7(unsigned long now)
     switch (jumpState) {
         case JUMPPREP:
             board.clearAll();
-            board.light(13, Colours::blue, Tile::OUTLINE);
-            board.light(14, Colours::blue, Tile::OUTLINE);
+            board.light(13, Colours::white, Tile::OUTLINE);
+            board.light(14, Colours::white, Tile::OUTLINE);
+
+            board.light(1, Colours::white, Tile::OUTLINE);
+            board.light(2, Colours::white, Tile::OUTLINE);
             startMillis = now;
             exCounter   = 0;
             jumpState   = JUMPBENCHMARK;
             break;
 
         case JUMPBENCHMARK:  // 5 s standing balance
-            if (anyOnTiles()) {
+            /*if (anyOnTiles()) {
                 struct_message_all msg{};
                 msg.id = 6;
                 msg.gB = 111;  // person on tile
                 sendResult(msg);
             }
-            if (now - startMillis >= (unsigned long)(stepDelay * 10)) {
-                board.clear(13);
-                board.clear(14);
+            */
+            if (now - startMillis >= (unsigned long)(stepDelay * 4)) {
+                clearT14T15();
                 struct_message_all msg{};
                 msg.id = 6;
                 msg.gB = 0;
                 sendResult(msg);
                 startMillis = now;
-                jumpState   = JUMPSTART;
+                jumpState   = JUMPBALANCE;
             }
             break;
 
+        case JUMPBALANCE:
+        if(now - startMillis >= (unsigned long)(stepDelay * 4))
+        {
+            board.light(13, Colours::blue, Tile::OUTLINE);
+            board.light(14, Colours::blue, Tile::OUTLINE);
+
+            board.light(1, Colours::blue, Tile::OUTLINE);
+            board.light(2, Colours::blue, Tile::OUTLINE);
+            startMillis = now;
+            jumpState   = JUMPSTART;
+        }
+        break;
+
         case JUMPSTART:  // 2 s dark, then orange = jump cue
-            if (now - startMillis >= (unsigned long)(stepDelay * 4)) {
+            if (now - startMillis >= (unsigned long)(stepDelay * 5)) {
                 board.light(13, Colours::orange, Tile::OUTLINE);
                 board.light(14, Colours::orange, Tile::OUTLINE);
+
+                board.light(1, Colours::orange, Tile::OUTLINE);
+                board.light(2, Colours::orange, Tile::OUTLINE);
+
                 struct_message_all msg{};
                 msg.id = 6;
                 msg.gB = 222;  // jump lights started
@@ -1157,9 +1232,8 @@ void Calibration::runCalib7(unsigned long now)
                 msg.gB = 333;  // in the air
                 sendResult(msg);
             }
-            if (now - startMillis >= (unsigned long)(airtimeDefault * 2)) {
-                board.clear(13);
-                board.clear(14);
+            if (now - startMillis >= (unsigned long)(airtimeDefault)) {
+                clearT14T15();
                 startMillis = now;
                 jumpState   = JUMPLANDPREP;
             }
@@ -1175,23 +1249,26 @@ void Calibration::runCalib7(unsigned long now)
                 msg.id = 6; msg.gB = 444;
                 sendResult(msg);
             }
-            if (now - startMillis >= (unsigned long)(stepDelay / 2)) {
+            if (now - startMillis >= (unsigned long)(stepDelay / 5)) {
                 board.light(13, Colours::blue, Tile::OUTLINE);
                 board.light(14, Colours::blue, Tile::OUTLINE);
+
+                board.light(1, Colours::blue, Tile::OUTLINE);
+                board.light(2, Colours::blue, Tile::OUTLINE);
+
                 startMillis = now;
                 jumpState   = JUMPLAND;
             }
             break;
 
-        case JUMPLAND:  // 3.5 s landing balance, blue lights
+        case JUMPLAND:  // 2s landing balance, blue lights
             if (anyOnTiles()) {
                 struct_message_all msg{};
                 msg.id = 6; msg.gB = 444;
                 sendResult(msg);
             }
-            if (now - startMillis >= (unsigned long)(stepDelay * 7)) {
-                board.clear(13);
-                board.clear(14);
+            if (now - startMillis >= (unsigned long)(stepDelay * 4)) {
+                clearT14T15();
                 struct_message_all msg{};
                 msg.id = 6; msg.gB = 0;
                 sendResult(msg);
@@ -1200,8 +1277,8 @@ void Calibration::runCalib7(unsigned long now)
             }
             break;
 
-        case JUMPEND:  // 2 s rest between jumps
-            if (now - startMillis >= (unsigned long)(stepDelay * 4)) {
+        case JUMPEND:  // 10s rest between jumps
+            if (now - startMillis >= (unsigned long)(stepDelay * 20)) {
                 exCounter++;
                 if (exCounter == 3) {
                     board.clearAll();
@@ -1209,7 +1286,7 @@ void Calibration::runCalib7(unsigned long now)
                     jumpState = JUMPDONE;
                 } else {
                     startMillis = now;
-                    jumpState   = JUMPSTART;
+                    jumpState   = JUMPBALANCE;
                 }
             }
             break;

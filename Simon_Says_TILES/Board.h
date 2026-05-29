@@ -39,6 +39,7 @@ public:
     void processRecievedData();
     void updateFromESPNOW(struct_message_all boards[]);
     struct_message_all* getStructFront() {return boardsStructFront; };
+    void wipeResults();
 
 
     //Tile interaction

@@ -10,6 +10,7 @@ Menu::Menu(Board& game_board) : Game(game_board)
 void Menu::Init()
 {
   board.clearAll();
+  board.wipeResults();
 }
 
 void Menu::Run(unsigned long dt)
@@ -19,6 +20,7 @@ void Menu::Run(unsigned long dt)
     sectionTest = false;
     testTimer = millis();
     section++;
+    board.clearAll();
     if(section >= 12)
     section = 0;
   }

@@ -42,6 +42,7 @@ private:
     int  endTile     = 4;
 
     uint32_t levColor = Colours::cyan;
+    bool gameEnd = false;
 
     // Line delays (ms) per level
     static constexpr int lineDelays[5] = { 140, 180, 220, 260, 300 };

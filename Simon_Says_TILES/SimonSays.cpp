@@ -14,11 +14,13 @@ void SimonSays::HandleInput(int input)
 
 void SimonSays::Init()
 {
+  board.wipeResults();
   game_sequence.clear();
   player_sequence.clear();
   board.clearAll();
   playerTurn = false;
   playerFailed = false;
+  gameEnd = false;
   blinkCount = 0;
   sequenceIdx = 0;
   lastTileUpdate = 0;
@@ -150,28 +152,32 @@ void SimonSays::Run(unsigned long dt)
           audioMessage.id = 6;
           audioMessage.js = 3;
           board.sendToAudio(audioMessage);
+
+
           finalScore = game_sequence.size();
           playerFailed = true;
           blinkTime = millis();  // start blink timer immediately
+
+          struct_message_all results;
+          results.id = 6;
+          results.eA = finalScore - 1;
+          board.sendToResults(results);
         }
       }
     }
     //END STATE FOR THE GAME WHEN PLAYER FAILS
     if(playerFailed)
     {
-      if (millis() - blinkTime >= blinkInterval)
+      if (millis() - blinkTime >= blinkInterval && !gameEnd)
       {
         blinkTime = millis();
         board.blinkBoard(Colours::red);
         blinkCount++;
 
-        if (blinkCount >= FAIL_BLINKS * 2)  // *2 because each blink = on + off
+        if (blinkCount >= FAIL_BLINKS * 2 && !gameEnd)  // *2 because each blink = on + off
         {
-          struct_message_all simonMessage;
-          simonMessage.id = 6;
-          simonMessage.eA = finalScore - 1;
-          board.sendToResults(simonMessage);
-          Init();  // restart from the beginning
+          board.clearAll();
+          gameEnd = true;
         }
       }
     }

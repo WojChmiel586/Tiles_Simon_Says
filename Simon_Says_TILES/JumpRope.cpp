@@ -38,6 +38,7 @@ void JumpRope::Init()
     currentRopeState = GAMEPREP;
 
     board.clearAll();
+    board.wipeResults();
 }
 
 
@@ -260,9 +261,10 @@ void JumpRope::Run(unsigned long dt)
         // ----------------------------------------------------------------
         case GAMEEND:
             // Stay idle; caller can detect this state and trigger Init()
-            if (currentMillis - startMillis >= 800)
+            if (currentMillis - startMillis >= 800 && !gameEnd)
             {
-
+                board.clearAll();
+                gameEnd = true;
             }
             break;
     }

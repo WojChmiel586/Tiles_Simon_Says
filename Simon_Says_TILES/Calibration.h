@@ -140,7 +140,7 @@ private:
     SquatState squatState = SQUATPREP;
 
     // --- Calib 7: Jumps ---
-    enum JumpState { JUMPPREP, JUMPBENCHMARK, JUMPSTART, JUMPOFF, JUMPLANDPREP, JUMPLAND, JUMPEND, JUMPDONE };
+    enum JumpState { JUMPPREP, JUMPBENCHMARK, JUMPBALANCE ,JUMPSTART, JUMPOFF, JUMPLANDPREP, JUMPLAND, JUMPEND, JUMPDONE };
     JumpState jumpState = JUMPPREP;
 
     // --- Calibend ---
@@ -163,9 +163,11 @@ private:
     void prepCalib4();                       // T10 RIGHT_HALF cyan + T11 LEFT_HALF magenta
     void stepBackLeft();                     // T10 RIGHT_HALF cyan
     void stepBackRight();                    // T11 LEFT_HALF magenta
-    void clearT10();
-    void clearT11();
-    void clearT10T11();
+    void stepBackLeftTap();
+    void stepBackRightTap();
+    void clearT14();
+    void clearT15();
+    void clearT14T15();
     void clearRow3();                        // tiles 8-11
     void clearRow2();                        // tiles 4-7
     void clearLungeTiles();                  // tiles 5,6,9,10,13,14
