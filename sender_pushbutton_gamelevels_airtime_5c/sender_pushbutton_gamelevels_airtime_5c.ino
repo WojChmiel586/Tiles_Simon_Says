@@ -165,107 +165,107 @@ void loop() {
     }
   }
 
-  // // read the state of all button values
-  // resetbuttonState = digitalRead(resetPin);
-  // //calibbuttonState = digitalRead(calibPin);
-  // entrybuttonState = digitalRead(entryPin);
-  // fivebuttonState = digitalRead(fivePin);
-  // tenbuttonState = digitalRead(tenPin);
-  // fifteenbuttonState = digitalRead(fifteenPin);
-  // //twentybuttonState = digitalRead(twentyPin);
-  // calib1State = digitalRead(calib1); 
-  // calib2State = digitalRead(calib2);
-  // calib3State = digitalRead(calib3);
-  // calib4State = digitalRead(calib4);
-  // calib5State = digitalRead(calib5);
-  // calib6State = digitalRead(calib6);
-  // calib7State = digitalRead(calib7);
-  // calibendState = digitalRead(calibend);
-  // //delay(5);
+/* Old input reading code
+ resetbuttonState = digitalRead(resetPin);
+ calibbuttonState = digitalRead(calibPin);
+ entrybuttonState = digitalRead(entryPin);
+ fivebuttonState = digitalRead(fivePin);
+ tenbuttonState = digitalRead(tenPin);
+ fifteenbuttonState = digitalRead(fifteenPin);
+ //twentybuttonState = digitalRead(twentyPin);
+ calib1State = digitalRead(calib1); 
+ calib2State = digitalRead(calib2);
+ calib3State = digitalRead(calib3);
+ calib4State = digitalRead(calib4);
+ calib5State = digitalRead(calib5);
+ calib6State = digitalRead(calib6);
+ calib7State = digitalRead(calib7);
+ calibendState = digitalRead(calibend);
+ //delay(5);
 
-  // if (resetbuttonState == HIGH &&  previousGameLevel != 0) {  // if the reset button is pressed
-  //   gamelevel = 0; 
-  //   previousGameLevel = gamelevel;
-  //   sendOff();
-  // } else {
-  // }
-  // if (calib1State == HIGH && previousGameLevel != 91) {  // if the calibration button is pressed
-  //   gamelevel = 91;
-  //   previousGameLevel = gamelevel;
-  //   sendOff();
-  // } else {
-  // }
-  // if (calib2State == HIGH && previousGameLevel != 92) {  // if the calibration button is pressed
-  //   gamelevel = 92;
-  //   previousGameLevel = gamelevel;
-  //   sendOff();
-  // } else {
-  // }
-  // if (calib3State == HIGH && previousGameLevel != 93) {  // if the calibration button is pressed
-  //   gamelevel = 93;
-  //   previousGameLevel = gamelevel;
-  //   sendOff();
-  // } else {
-  // }
-  // if (calib4State == HIGH && previousGameLevel != 94) {  // if the calibration button is pressed
-  //   gamelevel = 94;
-  //   previousGameLevel = gamelevel;
-  //   sendOff();
-  // } else {
-  // }
-  // if (calib5State == HIGH && previousGameLevel != 95) {  // if the calibration button is pressed
-  //   gamelevel = 95;
-  //   previousGameLevel = gamelevel;
-  //   sendOff();
-  // } else {
-  // }
-  // if (calib6State == HIGH && previousGameLevel != 96) {  // if the calibration button is pressed
-  //   gamelevel = 96;
-  //   previousGameLevel = gamelevel;
-  //   sendOff();
-  // } else {
-  // }
-  // if (calib7State == HIGH && previousGameLevel != 97) {  // if the calibration button is pressed
-  //   gamelevel = 97;
-  //   previousGameLevel = gamelevel;
-  //   sendOff();
-  // } else {
-  // }
-  // if (calibendState == HIGH && previousGameLevel != 98) {  // if the calibration button is pressed
-  //   gamelevel = 98;
-  //   previousGameLevel = gamelevel;
-  //   sendOff();
-  // } else {
-  // }
-  // if (entrybuttonState == HIGH && previousGameLevel != 1) {  // if the button is pressed
-  //   gamelevel = 1;
-  //   previousGameLevel = gamelevel;
-  //   sendOff();
-  // } else {
-  // }
-  // if (fivebuttonState == HIGH && previousGameLevel != 2) {  // if the button is pressed
-  //   gamelevel = 2;
-  //   previousGameLevel = gamelevel;
-  //   sendOff();
-  // } else {
-  // }
-  // if (tenbuttonState == HIGH && previousGameLevel != 3) {  // if the button is pressed
-  //   gamelevel = 3;
-  //   previousGameLevel = gamelevel;
-  //   sendOff();
-  // } else {
-  // }
-  // if (fifteenbuttonState == HIGH && previousGameLevel != 4) {  // if the button is pressed
-  //   gamelevel = 4;
-  //   previousGameLevel = gamelevel;
-  //   sendOff();
-  // } else {
-  // }
-/*  if (twentybuttonState == HIGH) {  // if the button is pressed
-    gamelevel = 5;
-    sendOff();
+ if (resetbuttonState == HIGH &&  previousGameLevel != 0) {  // if the reset button is pressed
+   gamelevel = 0; 
+   previousGameLevel = gamelevel;
+   sendOff();
+ } else {
+ }
+ if (calib1State == HIGH && previousGameLevel != 91) {  // if the calibration button is pressed
+   gamelevel = 91;
+   previousGameLevel = gamelevel;
+   sendOff();
+ } else {
+ }
+ if (calib2State == HIGH && previousGameLevel != 92) {  // if the calibration button is pressed
+   gamelevel = 92;
+   previousGameLevel = gamelevel;
+   sendOff();
+ } else {
+ }
+ if (calib3State == HIGH && previousGameLevel != 93) {  // if the calibration button is pressed
+   gamelevel = 93;
+   previousGameLevel = gamelevel;
+   sendOff();
+ } else {
+ }
+ if (calib4State == HIGH && previousGameLevel != 94) {  // if the calibration button is pressed
+   gamelevel = 94;
+   previousGameLevel = gamelevel;
+   sendOff();
+ } else {
+ }
+ if (calib5State == HIGH && previousGameLevel != 95) {  // if the calibration button is pressed
+   gamelevel = 95;
+   previousGameLevel = gamelevel;
+   sendOff();
+ } else {
+ }
+ if (calib6State == HIGH && previousGameLevel != 96) {  // if the calibration button is pressed
+   gamelevel = 96;
+   previousGameLevel = gamelevel;
+   sendOff();
+ } else {
+ }
+ if (calib7State == HIGH && previousGameLevel != 97) {  // if the calibration button is pressed
+   gamelevel = 97;
+   previousGameLevel = gamelevel;
+   sendOff();
+ } else {
+ }
+ if (calibendState == HIGH && previousGameLevel != 98) {  // if the calibration button is pressed
+   gamelevel = 98;
+   previousGameLevel = gamelevel;
+   sendOff();
+ } else {
+ }
+ if (entrybuttonState == HIGH && previousGameLevel != 1) {  // if the button is pressed
+   gamelevel = 1;
+   previousGameLevel = gamelevel;
+   sendOff();
+ } else {
+ }
+ if (fivebuttonState == HIGH && previousGameLevel != 2) {  // if the button is pressed
+   gamelevel = 2;
+   previousGameLevel = gamelevel;
+   sendOff();
+ } else {
+ }
+ if (tenbuttonState == HIGH && previousGameLevel != 3) {  // if the button is pressed
+   gamelevel = 3;
+   previousGameLevel = gamelevel;
+   sendOff();
+ } else {
+ }
+ if (fifteenbuttonState == HIGH && previousGameLevel != 4) {  // if the button is pressed
+   gamelevel = 4;
+   previousGameLevel = gamelevel;
+   sendOff();
+ } else {
+ }  if (twentybuttonState == HIGH) {  // if the button is pressed
+  gamelevel = 5;
+  sendOff();
   } else {
-  } */
+  } 
+  */
 
   // Read serial input -> send number on to game ESP to play a game. once done, we play sound.
   // we need to input 91, 92, 93, 95, 97, or 98 to start a game. Do not send 0 to reset

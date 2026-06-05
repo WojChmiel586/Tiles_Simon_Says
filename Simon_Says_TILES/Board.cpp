@@ -7,7 +7,7 @@ struct_message_all Board::boardsStructBack[7];
 
 
 Board::Board() {
-    // Reserve space for 16 pointers, initialize to nullptr
+    // Reserve space for 16 pointers
     tiles.reserve(TILE_COUNT);
 
     instance = this;
