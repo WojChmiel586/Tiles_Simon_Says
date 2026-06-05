@@ -8,7 +8,7 @@ typedef struct struct_message_all {
   int jc; // jumpCount 
   int js; // jumpState
   int sd; // stepDelay
-  int dA; // toe sensor (A) of the first tile (or weight float encoded as int on sender)
+  int dA; // toe sensor (A) of the first tile
   int dB;
   int eA;
   int eB;

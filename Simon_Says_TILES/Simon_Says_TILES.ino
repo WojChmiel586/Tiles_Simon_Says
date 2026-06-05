@@ -33,30 +33,19 @@ Game* calibration = new Calibration(board);
 Game* mainMenu    = new Menu(board);
 Game* currentGame = nullptr;
 
-// ---- Button input routing --------------------------------------------------
-// Game-select buttons (95-98) switch the active game immediately.
-// In-game buttons (1-5) are passed to the current game via HandleInput().
-// 0 = idle / no press, ignored.
-
-// Values that trigger a game switch and which game they map to:
-//   95 → (reserved for future game)
-//   96 → Calibration (selects exercise via setExercise, then Init)
-//   97 → JumpRope
-//   98 → SimonSays
-// Values 1-5 are forwarded to currentGame->HandleInput().
-// Values 91-94 select a calibration exercise (sets exercise + switches to Calibration).
-// NOTE: exercise values 91-94 will likely be reassigned when button layout is finalised.
-
+//   1 → Calibration (selects exercise via setExercise, then Init)
+//   2 → JumpRope
+//   3 → SimonSays
 static const int BUTTON_JUMPROPE    = 2;
 static const int BUTTON_SIMONSAYS   = 3;
-static const int BUTTON_CALIBRATION = 1;  // switches to calibration mode; exercise set by 1,2,3
+static const int BUTTON_CALIBRATION = 1;  // switches to calibration mode; exercise set by 91,92,93,94,95,96,97,98
 
 int  lastButtonValue = 0;   // previous frame's .b — for edge detection
 
 // ---- Delta time ------------------------------------------------------------
 unsigned long previousTime = 0;
 unsigned long deltaTime    = 0;
-// the setup routine runs once when you press reset:--------------------------------------------------
+// the setup routine runs once when you press reset:
 void setup() {
   // 1. Initialize Serial FIRST (for debugging)
   Serial.begin(115200);
@@ -109,7 +98,7 @@ void setup() {
   currentGame = mainMenu;   // default game on boot
 }
 
-//=============================================================================================================
+//LOOP
 void loop() 
 {
   unsigned long currentTime = millis();
@@ -118,7 +107,7 @@ void loop()
 
   board.processRecievedData();
 
-  // --- Read button input (edge-triggered: only act on a new press) ----------
+  // --- Read button input
   int buttonValue = board.getStructFront()[4].b;
 
 
