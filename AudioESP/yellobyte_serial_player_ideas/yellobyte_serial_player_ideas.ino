@@ -30,8 +30,11 @@ InputMixer<int16_t> mixer;
 StreamCopy copier(i2s,mixer);
 AudioInfo info(4410,2,16);
 // Volume Percentages, must add to 1.
-const float bgVol = 0.3;
-const float sfxVol = 0.7;
+const float bgVol = 0.4;
+const float sfxVol = 0.6;
+//The positions of the streams in the mixer
+int bgIndex = -1;
+int sfxIndex = -1;
 
 //BG and Event Sfx Streams
 File bgFile;
@@ -42,6 +45,7 @@ EncodedAudioStream bgStream(&bgFile, &bgDecoder);
 EncodedAudioStream sfxStream(&sfxFile, &sfxDecoder);
 VolumeStream bgVS(bgStream);
 VolumeStream sfxVS(sfxStream);
+
 StreamCopy bgCopy(bgStream,bgFile);
 StreamCopy sfxCopy(sfxStream,sfxFile);
 
@@ -131,9 +135,13 @@ void setup() {
   // Initialising Audio Mixer
   //AudioInfo mixer_config(44100,2,16);
   mixer.begin(info);
-  //mixer.add(bgVS);
-  mixer.add(sfxVS);
-    
+  //Add streams in at 100% weight (Volume)
+  bgIndex = mixer.add(bgVS, 100);
+  sfxIndex = mixer.add(sfxVS,100); 
+  // 'Turn off' Sound effects stream
+  mixer.setWeight(sfxIndex,0);
+
+
   // Scan SD card for audio files
   scanAudioFiles();
   
@@ -153,9 +161,14 @@ void setup() {
     delay(200);
   }
 
-  // bgFile = SD.open("/Melody.wav");
-  // bgStream.begin();
-  // bgVS.setVolume(bgVol);
+
+  bgFile = SD.open("/Melody.wav");
+  if(bgFile)
+  {
+    bgStream.begin();
+    bgVS.setVolume(bgVol);
+    Serial.println("Background Music Start!");
+  }
 
 }
 
@@ -176,9 +189,10 @@ void loop() {
   //Cleans for completed sfx sounds
   if (isSfxPlaying && !sfxFile.available())
   {
-    Serial.println("Event Sound Near end. Fading Out");
+    
     sfxFile.close();
     sfxVS.setVolume(0.0);
+    mixer.setWeight(sfxIndex,0);
     isSfxPlaying = false;
     Serial.println("Sfx Sound Finished Cleanly");
   }
@@ -188,20 +202,7 @@ void loop() {
   {
     espNowTriggerReceived = false;
     playSfxSound();
-  }
-
-
-  /*
-  // Check if current file finished playing for "Audio.h"
-  if (isPlaying && !audio.isRunning()) {
-    //delay(200) //Hopefully to help with clack
-    isPlaying = false;
-    digitalWrite(STATUS_LED, LOW);
-    Serial.println("Playback complete");
-    Serial.println("\nType a file number or name to play:");
-  }*/
-
-  
+  }  
   // Read serial input
   while (Serial.available() > 0) {
     char c = Serial.read();
@@ -368,6 +369,7 @@ void processSerialCommand(String command) {
 //for "AudioTools.h" (Mixer)
 void playSfxSound()
 {
+  mixer.setWeight(sfxIndex,100);
   sfxFile = SD.open("/fail.wav");
   if(sfxFile)
   {
