@@ -53,7 +53,7 @@ volatile bool sfxTrigger = false;
 bool isSfxPlaying = false;
 
 static uint32_t sfxStartTime = 0;
-const uint32_t sfxDurationMs = 3000;
+const uint32_t sfxDurationMs = 2000;
 
 //Defining Varaibles and Functions for Audio Mixer END
 
