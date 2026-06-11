@@ -2,10 +2,9 @@
 #include <SD.h>
 #include <FS.h>
 #include <SPI.h>
-#include "Audio.h"
 #include "AudioTools.h"
 #include "AudioTools/AudioCodecs/CodecWAV.h"
-#include <Wifi.h>
+#include <WiFi.h>
 #include <esp_now.h>
 
 // SD Card pins for YB-ESP32-S3-AMP
@@ -22,7 +21,6 @@
 // Status LED
 #define STATUS_LED 47
 
-Audio audio;
 
 //Defining Varaibles and Functions for Audio Mixer START
 
@@ -30,20 +28,24 @@ Audio audio;
 I2SStream i2s;
 InputMixer<int16_t> mixer;
 StreamCopy copier(i2s,mixer);
-
+AudioInfo info(4410,2,16);
 // Volume Percentages, must add to 1.
 const float bgVol = 0.3;
 const float sfxVol = 0.7;
 
 //BG and Event Sfx Streams
 File bgFile;
-WAVDecoder bgWavDec;
-EncodedAudioStream bgWavEAS(&bgFile,&bgWavDec);
-VolumeStream bgWav(bgWavEAS);
 File sfxFile;
-WAVDecoder sfxWavDec;
-EncodedAudioStream sfxWavEAS(&sfxFile,&sfxWavDec);
-VolumeStream sfxWav(sfxWavEAS);
+WAVDecoder bgDecoder;
+WAVDecoder sfxDecoder;
+EncodedAudioStream bgStream(&bgFile, &bgDecoder);
+EncodedAudioStream sfxStream(&sfxFile, &sfxDecoder);
+VolumeStream bgVS(bgStream);
+VolumeStream sfxVS(sfxStream);
+StreamCopy bgCopy(bgStream,bgFile);
+StreamCopy sfxCopy(sfxStream,sfxFile);
+
+
 
 bool isSfxPlaying = false;
 
@@ -82,7 +84,7 @@ int totalAudioFiles = 0;
 bool isPlaying = false;
 String serialBuffer = "";
 
-
+// Initalisation
 void setup() {
   Serial.begin(115200);
   delay(1000);
@@ -95,7 +97,6 @@ void setup() {
   
   // Initialize SD card using SPI
   SPI.begin(SD_SCK, SD_MISO, SD_MOSI);
-  SD.begin(SD_CS);
   
   if (!SD.begin(SD_CS)) {
     Serial.println("SD Card initialization failed!");
@@ -103,6 +104,7 @@ void setup() {
   }
   Serial.println("SD Card initialized");
   
+  WiFi.mode(WIFI_STA);
   // Initialised ESP-NOW
   if (esp_now_init() != ESP_OK)
   {
@@ -120,16 +122,18 @@ void setup() {
   i2s_config.sample_rate = 44100;    
   i2s_config.bits_per_sample = 16;
   i2s_config.channels = 2;
-  i2s.begin(i2s_config);
+  Serial.println("Starting I2S...");
+  bool ok = i2s.begin(i2s_config);
 
-  // Initialize audio for "Audio.h"
-  // audio.setPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
-  // audio.setVolume(15); // 0...21, adjust as needed
+  Serial.printf("I2S begin: %s\n", ok ? "OK" : "FAILED");
+  Serial.println("Ending I2S...");
 
   // Initialising Audio Mixer
-  AudioInfo mixer_config(44100,2,16);
-  mixer.begin(mixer_config);
-  
+  //AudioInfo mixer_config(44100,2,16);
+  mixer.begin(info);
+  //mixer.add(bgVS);
+  mixer.add(sfxVS);
+    
   // Scan SD card for audio files
   scanAudioFiles();
   
@@ -149,43 +153,32 @@ void setup() {
     delay(200);
   }
 
-  //Starts background music
-  bgFile = SD.open("/Melody.wav");
-  if(bgFile)
-  {
-    bgWavEAS.begin();
-    bgWav.setVolume(bgVol);
-    Serial.println("Background Music Started"); 
-  }
+  // bgFile = SD.open("/Melody.wav");
+  // bgStream.begin();
+  // bgVS.setVolume(bgVol);
+
 }
 
 void loop() {
-  //audio.loop();
-
   //Keeps audio streaming
+  // bgCopy.copy();
+  // sfxCopy.copy();
   copier.copy();
 
   //Loops Background Music
-  if(bgFile && !bgFile.available())
-  {
-    bgFile.seek(0);
-    bgWavEAS.begin();
-  }
+  // if(bgFile && !bgFile.available())
+  // {
+  //   bgFile.seek(0);
+  //   bgStream.end();
+  //   bgStream.begin();
+  // }
 
   //Cleans for completed sfx sounds
   if (isSfxPlaying && !sfxFile.available())
   {
     Serial.println("Event Sound Near end. Fading Out");
-    //Fade out
-    for (float vol = sfxVol; vol >= 0.0; vol -= 0.08)
-    {
-      sfxWav.setVolume(vol);
-      copier.copy();
-      delay(1);
-    }
-
     sfxFile.close();
-    sfxWav.setVolume(0.0);
+    sfxVS.setVolume(0.0);
     isSfxPlaying = false;
     Serial.println("Sfx Sound Finished Cleanly");
   }
@@ -372,69 +365,15 @@ void processSerialCommand(String command) {
   */
 }
 
-//For "Audio.h"
-void playAudioFile(int index) {
-  if (index < 0 || index >= totalAudioFiles) return; //If the audio number is out of scope stop function
-  //Serial.printf("Start of PlayAudioFile ---"); //Debugging
-  // Prefer WAV over MP3 if both exist
-  String pathToPlay;
-  if (audioFiles[index].hasWav) {
-    pathToPlay = audioFiles[index].wavPath;
-    Serial.printf("Playing WAV: %s\n", audioFiles[index].name.c_str());
-  } else if (audioFiles[index].hasMp3) {
-    pathToPlay = audioFiles[index].mp3Path;
-    Serial.printf("Playing MP3: %s\n", audioFiles[index].name.c_str());
-  } else {
-    Serial.println("Error: No valid audio file found");
-    return;
-  }
-  //Serial.printf("Before Conecting---"); //Debugging
-  digitalWrite(STATUS_LED, HIGH);
-  audio.connecttoFS(SD, pathToPlay.c_str(),0);
-  isPlaying = true;
-  //Serial.printf("End of PlayAudioFile"); //Debugging
-}
-
 //for "AudioTools.h" (Mixer)
 void playSfxSound()
 {
-  //If there's an sfx already playing
-  if (isSfxPlaying)
-  {
-    //Fade out
-    for (float vol = sfxVol; vol >= 0.0; vol -= 0.08)
-    {
-      sfxWav.setVolume(vol);
-      copier.copy();
-      delay(1);
-    }
-    sfxFile.close();
-    //mixer.setActive(sfxChannelId,false);
-  }
-
-  //Play new sound
   sfxFile = SD.open("/fail.wav");
-  if(sfxFile) 
+  if(sfxFile)
   {
-    sfxWavEAS.begin();
-    sfxWav.setVolume(sfxVol);
-    isSfxPlaying = true;
-    Serial.println("Sound Effect Playing.");
+    sfxStream.begin();
+    sfxVS.setVolume(sfxVol);
+    isSfxPlaying = true;   
+    Serial.println("SFX TRiggered");
   }
-  else
-  {
-    Serial.println("Error: sound effect missing from SD card.");
-  }
-}
-
-
-
-
-// Optional: Audio event callbacks for debugging
-void audio_info(const char *info) {
-  Serial.print("Info: "); Serial.println(info);
-}
-
-void audio_eof_mp3(const char *info) {
-  Serial.print("End of file: "); Serial.println(info);
 }
