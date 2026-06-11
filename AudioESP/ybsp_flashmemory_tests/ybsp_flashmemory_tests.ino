@@ -22,7 +22,7 @@
 // Status LED
 #define STATUS_LED 47
 
-#define AUDIO_BUFFER_SIZE 4096
+#define AUDIO_BUFFER_SIZE 1024
 
 //Defining Varaibles and Functions for Audio Mixer START
 
@@ -39,7 +39,7 @@ EncodedAudioStream bgStream(&bgFile,&bgDecoder);
 VolumeStream bgVolume(bgStream);
 
 int bgIndex = -1;
-const float bgVol = 0.1;
+const float bgVol = 50;
 
 //Sound Effects (RAM-Based)
 
@@ -48,9 +48,12 @@ WAVDecoder sfxDecoder;
 EncodedAudioStream sfxStream(&sfxFailStream,&sfxDecoder);
 
 int sfxIndex = -1;
-const float sfxVol = 0.9;
+const float sfxVol = 100;
 volatile bool sfxTrigger = false;
 bool isSfxPlaying = false;
+
+static uint32_t sfxStartTime = 0;
+const uint32_t sfxDurationMs = 3000;
 
 //Defining Varaibles and Functions for Audio Mixer END
 
@@ -118,8 +121,8 @@ void setup() {
   }
 
   bgStream.begin();
-  bgVolume.setVolume(bgVol);
-  bgIndex = mixer.add(bgVolume, 100);
+  bgVolume.setVolume(0.1);
+  bgIndex = mixer.add(bgVolume, 50);
 
 
   Serial.println("Background Music Start!");
@@ -131,11 +134,12 @@ void loop() {
   copier.copy();
 
   //Detect End of SFX
-  if(isSfxPlaying && !sfxFailStream.available())
+  if(isSfxPlaying && millis() - sfxStartTime > sfxDurationMs)// !sfxFailStream.available())
   {
     mixer.setWeight(sfxIndex,0);
-    mixer.setWeight(bgIndex,100);
+    //mixer.setWeight(bgIndex,50);
     isSfxPlaying = false;
+    Serial.println("Sound Effect End");
   }
 
 
@@ -165,11 +169,14 @@ void audioSetup() {
   i2s_config.sample_rate = 44100;    
   i2s_config.bits_per_sample = 16;
   i2s_config.channels = 2;
+  i2s_config.buffer_size = AUDIO_BUFFER_SIZE;
+  i2s_config.buffer_count = 10; 
   i2s.begin(i2s_config);
 
   mixer.begin(info);
   //Sfx Stream in RAM
   sfxStream.begin();
+  sfxDecoder.begin();
   sfxIndex = mixer.add(sfxStream, 0); //Stars Muted
 }
 
@@ -177,8 +184,13 @@ void playSfx()
 {
   //resets RAM Stream safely
   //sfxFailStream = MemoryStream((uint8_t*)sfxFailData,sfxFailLen,true,FLASH_RAM);
+  mixer.setWeight(sfxIndex,0);
+  delay(1);
+  sfxFailStream.begin();
+  //sfxDecoder.begin();
+  sfxStartTime = millis();
   mixer.setWeight(sfxIndex,100);
-  mixer.setWeight(bgIndex,25);
+  //mixer.setWeight(bgIndex,25);
 
   isSfxPlaying = true;
 }
