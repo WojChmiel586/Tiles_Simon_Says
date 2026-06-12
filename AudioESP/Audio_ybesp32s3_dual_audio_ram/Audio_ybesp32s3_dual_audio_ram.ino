@@ -113,7 +113,8 @@ void setup() {
 
   // Set up background music, background music comes from the SD Card because they're larger files, Have to be WAV.
 
-  bgFile = SD.open("/Melody.wav");
+  //bgFile = SD.open("/Melody.wav");
+  bgFile = SD.open("/ShortBG.wav");
   if(!bgFile)
   {
     Serial.println("Background music missing.");
@@ -129,6 +130,13 @@ void setup() {
 void loop() {
   //Keeps audio running
   copier.copy();
+
+  //Detect End of Background Music
+  if(!bgFile.available() || bgFile.available() < 2048)
+  {
+    Serial.println("BG music ended");
+    playBg(0);
+  }
 
   //Detect End of SFX
   if(isSfxPlaying && millis() - sfxStartTime > sfxDurationMs)
@@ -190,7 +198,7 @@ void playSfx(int sfx_playing)
   delete sfxStream;
   delete sfxDecoder;
   delete sfxMemoryStream;
-  mixer.remove(sfxIndex);
+  // mixer.remove(sfxIndex);
 
   //Changes What sound effect is playing.
   if(sfx_playing == 0)
@@ -228,6 +236,26 @@ void playSfx(int sfx_playing)
   mixer.setWeight(sfxIndex,100);
 
   isSfxPlaying = true;
+}
+
+void playBg(int bg_playing)
+{
+  mixer.setWeight(bgIndex,0);
+
+  File newFile = SD.open("/ShortBG.wav");
+  if(!newFile){Serial.println("Missing Bg Music");}
+
+  bgFile.close();
+  bgFile = newFile;
+
+  bgDecoder.begin();
+
+  bgStream.end();
+  bgStream = EncodedAudioStream(&bgFile, &bgDecoder);
+  bgStream.begin();
+
+  mixer.setWeight(bgIndex,100);
+  Serial.println("Background Music Starting");
 }
 
 void processSerialCommand(String command) {
