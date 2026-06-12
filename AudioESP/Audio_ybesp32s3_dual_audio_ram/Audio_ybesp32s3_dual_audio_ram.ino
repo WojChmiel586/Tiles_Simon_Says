@@ -2,6 +2,8 @@
 #include <SD.h>
 #include <FS.h>
 #include <SPI.h>
+//For the next two libraies to work, if AudioTools by pschatzmann isn't available in the library
+//Will have to manually install them via the termial doing 'git install https://github.com/pschatzmann/arduino-audio-tools' into the Arduino Library Folder.
 #include "AudioTools.h"
 #include "AudioTools/AudioCodecs/CodecWAV.h"
 #include <WiFi.h>
@@ -41,19 +43,18 @@ VolumeStream bgVolume(bgStream);
 int bgIndex = -1;
 const float bgVol = 50;
 
-//Sound Effects (RAM-Based)
-
-MemoryStream sfxFailStream((uint8_t*)sfxFailData,sfxFailLen, true, FLASH_RAM);
-WAVDecoder sfxDecoder;
-EncodedAudioStream sfxStream(&sfxFailStream,&sfxDecoder);
+//Sound Effects (RAM-Based) Pointers so they can be changed
+MemoryStream* sfxMemoryStream;
+WAVDecoder* sfxDecoder;
+EncodedAudioStream* sfxStream;
 
 int sfxIndex = -1;
 const float sfxVol = 100;
-volatile bool sfxTrigger = false;
 bool isSfxPlaying = false;
 
+//Sound Effect start and end times (Milliseconds).
 static uint32_t sfxStartTime = 0;
-const uint32_t sfxDurationMs = 2000;
+uint32_t sfxDurationMs = 2000;
 
 //Defining Varaibles and Functions for Audio Mixer END
 
@@ -92,7 +93,6 @@ void setup() {
 
   //Sets up mixer and I2S.   
   audioSetup();
-
   // Scan SD card for audio files
   scanAudioFiles();
   
@@ -111,7 +111,7 @@ void setup() {
     delay(200);
   }
 
-  // Set up background music
+  // Set up background music, background music comes from the SD Card because they're larger files, Have to be WAV.
 
   bgFile = SD.open("/Melody.wav");
   if(!bgFile)
@@ -119,12 +119,9 @@ void setup() {
     Serial.println("Background music missing.");
     return;   
   }
-
   bgStream.begin();
   bgVolume.setVolume(0.1);
   bgIndex = mixer.add(bgVolume, 50);
-
-
   Serial.println("Background Music Start!");
   
 }
@@ -134,15 +131,13 @@ void loop() {
   copier.copy();
 
   //Detect End of SFX
-  if(isSfxPlaying && millis() - sfxStartTime > sfxDurationMs)// !sfxFailStream.available())
+  if(isSfxPlaying && millis() - sfxStartTime > sfxDurationMs)
   {
     mixer.setWeight(sfxIndex,0);
     //mixer.setWeight(bgIndex,50);
     isSfxPlaying = false;
     Serial.println("Sound Effect End");
   }
-
-
 
   // Read serial input
   while (Serial.available() > 0) {
@@ -174,25 +169,78 @@ void audioSetup() {
   i2s.begin(i2s_config);
 
   mixer.begin(info);
-  //Sfx Stream in RAM
-  sfxStream.begin();
-  sfxDecoder.begin();
-  sfxIndex = mixer.add(sfxStream, 0); //Stars Muted
+  //Sfx Stream, allocating base pointers to avoid errors. 
+  sfxMemoryStream = new MemoryStream((uint8_t*)sfxFailData,sfxFailLen,true,FLASH_RAM);
+  sfxDecoder = new WAVDecoder();
+  sfxStream = new EncodedAudioStream(sfxMemoryStream,sfxDecoder);
+
+  sfxStream->begin();
+  sfxDecoder->begin();
+  sfxIndex = mixer.add(*sfxStream, 0); //Starts Muted
 }
 
-void playSfx()
+void playSfx(int sfx_playing)
 {
-  //resets RAM Stream safely
-  //sfxFailStream = MemoryStream((uint8_t*)sfxFailData,sfxFailLen,true,FLASH_RAM);
+  //Ensures stream is turned off
   mixer.setWeight(sfxIndex,0);
   delay(1);
-  sfxFailStream.begin();
-  //sfxDecoder.begin();
+  //Resets Variables for reasignment
+  const uint8_t* currentData = nullptr;
+  size_t currentLen = 0;
+  delete sfxStream;
+  delete sfxDecoder;
+  delete sfxMemoryStream;
+  mixer.remove(sfxIndex);
+
+  //Changes What sound effect is playing.
+  if(sfx_playing == 0)
+  {
+    currentData = sfxFailData; //Data to change it to
+    currentLen = sfxFailLen; // Length of data
+    Serial.println("Playing Fail"); 
+    sfxDurationMs = 1800; //Length of audio in Milliseconds (Needs to at least equal or less to length to avoid clack noise + distortion)
+  }
+  else if(sfx_playing == 1)
+  {
+    currentData = sfxSuccessData;
+    currentLen = sfxSuccessLen;
+    Serial.println("Playing Success");
+    sfxDurationMs = 1020;
+  }
+  else
+  {
+    currentData = sfxPartialData;
+    currentLen = sfxPartialLen;
+    Serial.println("Playing Parital");
+    sfxDurationMs = 1500;
+  }
+  //Serial.printf("Data=%p Len=%u\n", currentData, (unsigned)currentLen);
+  sfxMemoryStream = new MemoryStream((uint8_t*)currentData,currentLen,true,FLASH_RAM);
+  sfxDecoder = new WAVDecoder();
+  sfxStream = new EncodedAudioStream(sfxMemoryStream,sfxDecoder);
+  
+  //Reinitalise stream into mixer.
+  sfxStream->begin();
+  sfxDecoder->begin();
+  sfxIndex = mixer.add(*sfxStream,0);
+
   sfxStartTime = millis();
   mixer.setWeight(sfxIndex,100);
-  //mixer.setWeight(bgIndex,25);
 
   isSfxPlaying = true;
+}
+
+void processSerialCommand(String command) {
+  command.trim();
+  //Serial.println("Start of Process ----------------------"); //Debugging
+  if (command.length() == 0) return;
+  // Check if it's the list command
+  if (command.equalsIgnoreCase("list")) {
+    listAllFiles();
+    return;
+  }
+  playSfx(command.toInt());
+  return;
 }
 
 void scanAudioFiles() {
@@ -288,16 +336,3 @@ void listAllFiles() {
   Serial.println("Type 'list' to show all files again");
 }
 
-void processSerialCommand(String command) {
-  command.trim();
-  //Serial.println("Start of Process ----------------------"); //Debugging
-  if (command.length() == 0) return;
-  // Check if it's the list command
-  if (command.equalsIgnoreCase("list")) {
-    listAllFiles();
-    return;
-  }
-  playSfx();
-  //playSfxSound();
-  return;
-}
