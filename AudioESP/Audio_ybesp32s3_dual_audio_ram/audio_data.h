@@ -3,9 +3,12 @@
 //Each sound effect needs:
 // const unsigned char name[] PROGMEM = {HEXADECIMAL NUMBERS};
 //
+//List for all sfx at bottom
 
 #pragma once
 #include <Arduino.h>
+
+
 
 const unsigned char sfxSuccessData[] PROGMEM = 
 {
@@ -49568,3 +49571,35 @@ const unsigned char sfxPartialData[] PROGMEM =
 const unsigned int sfxSuccessLen = sizeof(sfxSuccessData);
 const unsigned int sfxFailLen = sizeof(sfxFailData);
 const unsigned int sfxPartialLen = sizeof(sfxPartialData);
+
+struct Sfx 
+{
+  const char* name;
+  const uint8_t* data;
+  size_t len;
+  int ms;
+};
+
+static const Sfx sfxList[] = 
+{
+  {"fail",sfxFailData, sfxFailLen, 1800},
+  {"success",sfxSuccessData, sfxSuccessLen, 1020},
+  {"partial",sfxPartialData, sfxPartialLen, 1500}
+};
+
+//Keep them in order 
+static const uint8_t* const sfxData[] = 
+{
+  sfxFailData,sfxSuccessData,sfxPartialData
+};
+static const size_t sfxLen[] = 
+{
+  sfxFailLen, sfxSuccessLen, sfxPartialLen
+};
+//The duration of the files in milliseconds
+static const int sfxMs[] =
+{
+  1800,1020,1500
+};
+
+const unsigned int sfxAmount = 3;
