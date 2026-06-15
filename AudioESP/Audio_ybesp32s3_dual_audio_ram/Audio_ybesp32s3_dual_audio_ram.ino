@@ -6,8 +6,6 @@
 //Will have to manually install them via the termial doing 'git install https://github.com/pschatzmann/arduino-audio-tools' into the Arduino Library Folder.
 #include "AudioTools.h"
 #include "AudioTools/AudioCodecs/CodecWAV.h"
-#include <WiFi.h>
-#include <esp_now.h>
 #include "audio_data.h"
 
 // SD Card pins for YB-ESP32-S3-AMP
@@ -72,11 +70,59 @@ int totalAudioFiles = 0;
 bool isPlaying = false;
 String serialBuffer = "";
 
+// ----  ESP  ----
+#include <WiFi.h>
+#include <esp_now.h>
+#include "ESPEstruct.h"
+
+//Going to Game ESP
+uint8_t receiverAddress[] = { 0xEC, 0xDA, 0x3B, 0x95, 0xC5, 0x0C };
+
+int recievedSfx;
+int recievedBg;
+bool dataReceived =false; 
+
+//Runs when data has been received from ESP
+void OnDataRecv(const esp_now_recv_info_t *info, const uint8_t *incomingData, int len) 
+{
+  struct_message_all myResults; 
+  //const uint8_t *mac_addr = info->src_addr;// Extract MAC address of sender
+  memcpy(&myResults, incomingData, sizeof(myResults));
+
+  int idx = myResults.id; //Need to see if Id = 6
+  recievedSfx = myResults.js; //Gives number of sfx to be played.
+  recievedBg = myResults.jc; //Gives number of background to be played.
+  dataReceived = true;
+}
+
+
 // Initalisation
 void setup() {
   Serial.begin(115200);
+  WiFi.mode(WIFI_STA);
   delay(1000);
+
+  // Initialize ESP-NOW
+  if (esp_now_init() != ESP_OK) {
+    Serial.println("Error initializing ESP-NOW");
+    return;
+  }
   
+  // Register Callbacks using explicit casting to prevent v3.0 errors
+  //esp_now_register_send_cb((esp_now_send_cb_t)OnDataSent);
+  esp_now_register_recv_cb((esp_now_recv_cb_t)OnDataRecv);
+
+  // Register Peer
+  esp_now_peer_info_t peerInfo = {};
+  memcpy(peerInfo.peer_addr, receiverAddress, 6);
+  peerInfo.channel = 0;
+  peerInfo.encrypt = false;
+  // Add peer to network
+  if (esp_now_add_peer(&peerInfo) != ESP_OK) {
+    Serial.println("Failed to add peer");
+    return;
+  }
+
   // Setup status LED
   pinMode(STATUS_LED, OUTPUT);
   digitalWrite(STATUS_LED, LOW);
@@ -131,10 +177,37 @@ void loop() {
   //Keeps audio running
   copier.copy();
 
+  if(dataReceived)
+  {
+    Serial.printf("Sfx Data received: ");
+    Serial.println(recievedSfx);
+    Serial.printf("Bg Data received: ");
+    Serial.println(recievedBg);
+
+    //0 Means Nothing, Don't use that, it's a null state meaning empty
+    if(recievedSfx >= 1 && recievedSfx < 4)
+    {
+      Serial.println("Sound Effect Playing.");
+      playSfx(recievedSfx);
+    }
+    // 7 to 10 are music, 11 is silence
+    if(recievedBg >= 7 && recievedBg < 12)
+    {
+      Serial.println("Background Change.");
+      playBg(recievedBg,0);
+    }
+    // else if(recievedBg == 0)
+    // {
+    //   Serial.println("Background Change to silence");
+    //   playBg(11,0);
+    // }
+    dataReceived = false;
+  }
+
   //Detect End of Background Music
   if(!bgFile.available() || bgFile.available() < 2048)
   {
-    Serial.println("BG music ended");
+    //Serial.println("BG music ended");
     playBg(-1,1); //Not passing in new audio (-1), confirmed its looping instead (1)
   }
 
@@ -282,7 +355,7 @@ void playBg(int bg_playing, int looping)
   bgStream.begin();
 
   mixer.setWeight(bgIndex,100);
-  Serial.println("Background Music Starting");
+  //Serial.println("Background Music Starting");
 }
 
 void processSerialCommand(String command) {

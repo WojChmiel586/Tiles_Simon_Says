@@ -8,8 +8,6 @@
 #pragma once
 #include <Arduino.h>
 
-
-
 const unsigned char sfxSuccessData[] PROGMEM = 
 {
   0x52, 0x49, 0x46, 0x46, 0x22, 0xCA, 0x02, 0x00, 0x57, 0x41, 0x56, 0x45, 0x66, 0x6D, 0x74, 0x20, 
@@ -49572,6 +49570,9 @@ const unsigned int sfxSuccessLen = sizeof(sfxSuccessData);
 const unsigned int sfxFailLen = sizeof(sfxFailData);
 const unsigned int sfxPartialLen = sizeof(sfxPartialData);
 
+const unsigned char sfxEmptyData[] PROGMEM = {0x52};
+const unsigned int sfxEmptyLen = sizeof(sfxEmptyData);
+
 struct Sfx 
 {
   const char* name;
@@ -49582,24 +49583,10 @@ struct Sfx
 
 static const Sfx sfxList[] = 
 {
-  {"fail",sfxFailData, sfxFailLen, 1800},
+  {"nodata",sfxEmptyData,sfxEmptyLen,1},
   {"success",sfxSuccessData, sfxSuccessLen, 1020},
-  {"partial",sfxPartialData, sfxPartialLen, 1500}
-};
-
-//Keep them in order 
-static const uint8_t* const sfxData[] = 
-{
-  sfxFailData,sfxSuccessData,sfxPartialData
-};
-static const size_t sfxLen[] = 
-{
-  sfxFailLen, sfxSuccessLen, sfxPartialLen
-};
-//The duration of the files in milliseconds
-static const int sfxMs[] =
-{
-  1800,1020,1500
+  {"partial",sfxPartialData, sfxPartialLen, 1500},
+  {"fail",sfxFailData, sfxFailLen, 1800}
 };
 
 const unsigned int sfxAmount = 3;
