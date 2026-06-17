@@ -48,11 +48,13 @@ String currentPath;
 MemoryStream* sfxMemoryStream;
 WAVDecoder* sfxDecoder;
 EncodedAudioStream* sfxStream;
+VolumeStream* sfxVolume;
 ResampleStream* sfxResample;
 
 int sfxIndex = -1;
 bool isSfxPlaying = false;
 float sfxPitch = 1.0f; //Normal.
+float sfxVolValue = 0.70;
 
 //Sound Effect start and end times (Milliseconds).
 static uint32_t sfxStartTime = 0;
@@ -85,7 +87,9 @@ uint8_t receiverAddress[] = { 0xEC, 0xDA, 0x3B, 0x95, 0xC5, 0x0C };
 int recvSfx;
 int recvBg;
 int recvBgVol = 50;
-bool dataReceived =false; 
+int recvSfxVol = 50;
+int recvSfxPitch = 100;
+bool dataReceived = false; 
 
 //Runs when data has been received from ESP
 void OnDataRecv(const esp_now_recv_info_t *info, const uint8_t *incomingData, int len) 
@@ -98,6 +102,8 @@ void OnDataRecv(const esp_now_recv_info_t *info, const uint8_t *incomingData, in
   recvSfx = myResults.js; //Gives number of sfx to be played.
   recvBg = myResults.jc; //Gives number of background to be played.
   //recvBgVol = myResults. //Gives number for background volume to change to (1 to 101) 0 Means the volume isn't changing 
+  //recvSfxVol = myResults. //Gives number for sfx volume to change to (1 to 101) 0 Means the volume isn't changing 
+  //recvSfxPitch = myResults. //Gives number for sfx pitch to change to (95 to 110) 0 Means the pitch isn't changing 
   dataReceived = true;
 }
 
@@ -192,14 +198,30 @@ void loop() {
     Serial.println(recvSfx);
     Serial.printf("Bg Data received: ");
     Serial.println(recvBg);
-    Serial.printf("Bg Data received: ");
+    Serial.printf("Bg Vol Data received: ");
     Serial.println(recvBgVol);
+    Serial.printf("Sfx Vol Data received: ");
+    Serial.println(recvSfxVol);
+    Serial.printf("Sfx Vol Pitch Data received: ");
+    Serial.println(recvSfxPitch);
     //0 Means Nothing, Don't use that, it's a null state meaning empty
     //If the background volume is changing
     if(recvBgVol >= 1 && recvBgVol <= 101)
     {
       Serial.println("Background Volume Change.");
       changeBgVol(recvBgVol-1);
+    }
+    //If The sound effect volume is changing
+    if(recvSfxVol >= 1 && recvSfxVol <= 101)
+    {
+      Serial.println("Sound Effect Volume Change.");
+      changeSfxVol(recvSfxVol-1);
+    }
+    //If the sound effect pitch is changing
+    if(recvSfxPitch >= 95 && recvSfxPitch <= 110)
+    {
+      Serial.println("Sound Effect Pitch Change.");
+      changeSfxPitch(recvSfxPitch);
     }
     // Play sound effects
     if(recvSfx >= 1 && recvSfx < 4)
@@ -267,8 +289,12 @@ void audioSetup() {
   sfxMemoryStream = new MemoryStream((uint8_t*)sfxFailData,sfxFailLen,true,FLASH_RAM);
   sfxDecoder = new WAVDecoder();
   sfxStream = new EncodedAudioStream(sfxMemoryStream,sfxDecoder);
+  sfxVolume = new VolumeStream(*sfxStream);
+  sfxVolume->setAudioInfo(info);
+  sfxVolume->begin();
+  sfxVolume->setVolume(sfxVolValue);
   //For SFX Pitches
-  sfxResample = new ResampleStream(*sfxStream);
+  sfxResample = new ResampleStream(*sfxVolume);
   ResampleConfig cfg = sfxResample->defaultConfig();
   cfg.step_size = 1.0f;   // normal pitch
   sfxResample->end();
@@ -276,7 +302,7 @@ void audioSetup() {
 
   sfxStream->begin();
   sfxDecoder->begin();
-  sfxIndex = mixer.add(*sfxStream, 0); //Starts Muted
+  sfxIndex = mixer.add(*sfxVolume, 0); //Starts Muted
 }
 
 void playSfx(int sfx_playing)
@@ -291,6 +317,7 @@ void playSfx(int sfx_playing)
   delete sfxStream;
   delete sfxDecoder;
   delete sfxMemoryStream;
+  delete sfxVolume;
   delete sfxResample;
 
   currentData = sfxList[sfx_playing].data;
@@ -301,8 +328,12 @@ void playSfx(int sfx_playing)
   sfxMemoryStream = new MemoryStream((uint8_t*)currentData,currentLen,true,FLASH_RAM);
   sfxDecoder = new WAVDecoder();
   sfxStream = new EncodedAudioStream(sfxMemoryStream,sfxDecoder);
+  sfxVolume = new VolumeStream(*sfxStream);
+  sfxVolume->setAudioInfo(info);
+  sfxVolume->begin();
+  sfxVolume->setVolume(sfxVolValue);
   //For SFX Pitches
-  sfxResample = new ResampleStream(*sfxStream);
+  sfxResample = new ResampleStream(*sfxVolume);
   ResampleConfig cfg = sfxResample->defaultConfig();
   cfg.step_size = sfxPitch;   // normal pitch
   sfxResample->begin(cfg);
@@ -369,7 +400,6 @@ void processSerialCommand(String command) {
     listAllFiles();
     return;
   }
-
   bool isNumber = true;
   for (unsigned int i = 0; i < command.length(); i++)
   {
@@ -432,6 +462,20 @@ void changeBgVol(int p_Vol)
   float newVolume = float(p_Vol) / 100; //Divide number by 100 for decimal.
   Serial.println(newVolume);
   bgVolume.setVolume(newVolume);
+}
+
+void changeSfxVol(int p_Vol)
+{
+  //Change Background Volume
+  if(p_Vol < 0 || p_Vol > 100)
+  {
+    Serial.println("Invalid Volume Number, has to be between 0 and 100.");
+    return;
+  }
+  Serial.println(p_Vol);
+  float newVolume = float(p_Vol) / 100; //Divide number by 100 for decimal.
+  Serial.println(newVolume);
+  sfxVolValue = newVolume;
 }
 
 void changeSfxPitch(int p_Pitch)
