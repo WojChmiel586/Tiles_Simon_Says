@@ -49589,4 +49589,4 @@ static const Sfx sfxList[] =
   {"fail",sfxFailData, sfxFailLen, 1800}
 };
 
-const unsigned int sfxAmount = 3;
+const unsigned int sfxAmount = 4;

@@ -2,11 +2,13 @@
 #include <SD.h>
 #include <FS.h>
 #include <SPI.h>
-//For the next two libraies to work, if AudioTools by pschatzmann isn't available in the library
+#include "audio_data.h"
+//For the next libraies to work, if AudioTools by pschatzmann isn't available in the library
 //Will have to manually install them via the termial doing 'git install https://github.com/pschatzmann/arduino-audio-tools' into the Arduino Library Folder.
 #include "AudioTools.h"
 #include "AudioTools/AudioCodecs/CodecWAV.h"
-#include "audio_data.h"
+#include "AudioTools/CoreAudio/ResampleStream.h"
+
 
 // SD Card pins for YB-ESP32-S3-AMP
 #define SD_CS 10
@@ -39,17 +41,18 @@ EncodedAudioStream bgStream(&bgFile,&bgDecoder);
 VolumeStream bgVolume(bgStream);
 
 int bgIndex = -1;
-const float bgVol = 50;
+const float bgVol = 1.0;
 String currentPath;
 
 //Sound Effects (RAM-Based) Pointers so they can be changed
 MemoryStream* sfxMemoryStream;
 WAVDecoder* sfxDecoder;
 EncodedAudioStream* sfxStream;
+ResampleStream* sfxResample;
 
 int sfxIndex = -1;
-const float sfxVol = 100;
 bool isSfxPlaying = false;
+float sfxPitch = 1.0f; //Normal.
 
 //Sound Effect start and end times (Milliseconds).
 static uint32_t sfxStartTime = 0;
@@ -78,8 +81,10 @@ String serialBuffer = "";
 //Going to Game ESP
 uint8_t receiverAddress[] = { 0xEC, 0xDA, 0x3B, 0x95, 0xC5, 0x0C };
 
-int recievedSfx;
-int recievedBg;
+//Global Variables to check what data has been received.
+int recvSfx;
+int recvBg;
+int recvBgVol = 50;
 bool dataReceived =false; 
 
 //Runs when data has been received from ESP
@@ -90,11 +95,11 @@ void OnDataRecv(const esp_now_recv_info_t *info, const uint8_t *incomingData, in
   memcpy(&myResults, incomingData, sizeof(myResults));
 
   int idx = myResults.id; //Need to see if Id = 6
-  recievedSfx = myResults.js; //Gives number of sfx to be played.
-  recievedBg = myResults.jc; //Gives number of background to be played.
+  recvSfx = myResults.js; //Gives number of sfx to be played.
+  recvBg = myResults.jc; //Gives number of background to be played.
+  //recvBgVol = myResults. //Gives number for background volume to change to (1 to 101) 0 Means the volume isn't changing 
   dataReceived = true;
 }
-
 
 // Initalisation
 void setup() {
@@ -166,9 +171,13 @@ void setup() {
     Serial.println("Background music missing.");
     return;   
   }
+  //Starts Background music stream
   bgStream.begin();
-  bgVolume.setVolume(0.1);
-  bgIndex = mixer.add(bgVolume, 50);
+  //Starts background music volume, so it can be changed throughout
+  bgVolume.setAudioInfo(info);
+  bgVolume.begin();
+  bgVolume.setVolume(0.50); //Start at half volume (100% volume == 1)
+  bgIndex = mixer.add(bgVolume, 100);
   Serial.println("Background Music Start!");
   
 }
@@ -180,27 +189,31 @@ void loop() {
   if(dataReceived)
   {
     Serial.printf("Sfx Data received: ");
-    Serial.println(recievedSfx);
+    Serial.println(recvSfx);
     Serial.printf("Bg Data received: ");
-    Serial.println(recievedBg);
-
+    Serial.println(recvBg);
+    Serial.printf("Bg Data received: ");
+    Serial.println(recvBgVol);
     //0 Means Nothing, Don't use that, it's a null state meaning empty
-    if(recievedSfx >= 1 && recievedSfx < 4)
+    //If the background volume is changing
+    if(recvBgVol >= 1 && recvBgVol <= 101)
+    {
+      Serial.println("Background Volume Change.");
+      changeBgVol(recvBgVol-1);
+    }
+    // Play sound effects
+    if(recvSfx >= 1 && recvSfx < 4)
     {
       Serial.println("Sound Effect Playing.");
-      playSfx(recievedSfx);
+      playSfx(recvSfx);
     }
     // 7 to 10 are music, 11 is silence
-    if(recievedBg >= 7 && recievedBg < 12)
+    if(recvBg >= 7 && recvBg < 12)
     {
       Serial.println("Background Change.");
-      playBg(recievedBg,0);
+      playBg(recvBg,0);
     }
-    // else if(recievedBg == 0)
-    // {
-    //   Serial.println("Background Change to silence");
-    //   playBg(11,0);
-    // }
+    
     dataReceived = false;
   }
 
@@ -254,6 +267,12 @@ void audioSetup() {
   sfxMemoryStream = new MemoryStream((uint8_t*)sfxFailData,sfxFailLen,true,FLASH_RAM);
   sfxDecoder = new WAVDecoder();
   sfxStream = new EncodedAudioStream(sfxMemoryStream,sfxDecoder);
+  //For SFX Pitches
+  sfxResample = new ResampleStream(*sfxStream);
+  ResampleConfig cfg = sfxResample->defaultConfig();
+  cfg.step_size = 1.0f;   // normal pitch
+  sfxResample->end();
+  sfxResample->begin(cfg);
 
   sfxStream->begin();
   sfxDecoder->begin();
@@ -272,44 +291,27 @@ void playSfx(int sfx_playing)
   delete sfxStream;
   delete sfxDecoder;
   delete sfxMemoryStream;
-  // mixer.remove(sfxIndex);
+  delete sfxResample;
 
   currentData = sfxList[sfx_playing].data;
   currentLen = sfxList[sfx_playing].len;
   sfxDurationMs = sfxList[sfx_playing].ms;
-  /*
-  //Changes What sound effect is playing.
-    if(sfx_playing == 0)
-    {
-      currentData = sfxFailData; //Data to change it to
-      currentLen = sfxFailLen; // Length of data
-      Serial.println("Playing Fail"); 
-      sfxDurationMs = 1800; //Length of audio in Milliseconds (Needs to at least equal or less to length to avoid clack noise + distortion)
-    }
-    else if(sfx_playing == 1)
-    {
-      currentData = sfxSuccessData;
-      currentLen = sfxSuccessLen;
-      Serial.println("Playing Success");
-      sfxDurationMs = 1020;
-    }
-    else
-    {
-      currentData = sfxPartialData;
-      currentLen = sfxPartialLen;
-      Serial.println("Playing Parital");
-      sfxDurationMs = 1500;
-    }
-  */
+  
   //Serial.printf("Data=%p Len=%u\n", currentData, (unsigned)currentLen);
   sfxMemoryStream = new MemoryStream((uint8_t*)currentData,currentLen,true,FLASH_RAM);
   sfxDecoder = new WAVDecoder();
   sfxStream = new EncodedAudioStream(sfxMemoryStream,sfxDecoder);
-  
+  //For SFX Pitches
+  sfxResample = new ResampleStream(*sfxStream);
+  ResampleConfig cfg = sfxResample->defaultConfig();
+  cfg.step_size = sfxPitch;   // normal pitch
+  sfxResample->begin(cfg);
+
+
   //Reinitalise stream into mixer.
   sfxStream->begin();
   sfxDecoder->begin();
-  sfxIndex = mixer.add(*sfxStream,0);
+  sfxIndex = mixer.add(*sfxResample,0);
 
   sfxStartTime = millis();
   mixer.setWeight(sfxIndex,100);
@@ -382,7 +384,15 @@ void processSerialCommand(String command) {
   if(isNumber)
   {
     fileIndex = command.toInt();
-    if(fileIndex > sfxAmount - 1) 
+    Serial.println(fileIndex);
+    //Change Sound Effect
+    if(fileIndex >= 95 && fileIndex <= 110)
+    {
+      Serial.println("Changing Pitch");
+      changeSfxPitch(fileIndex);
+      return;
+    }
+    else if(fileIndex > sfxAmount - 1) 
     {
       Serial.println("No SFX fit that number");
       return; 
@@ -408,6 +418,27 @@ void processSerialCommand(String command) {
   }
   
   return;
+}
+
+void changeBgVol(int p_Vol)
+{
+  //Change Background Volume
+  if(p_Vol < 0 || p_Vol > 100)
+  {
+    Serial.println("Invalid Volume Number, has to be between 0 and 100.");
+    return;
+  }
+  Serial.println(p_Vol);
+  float newVolume = float(p_Vol) / 100; //Divide number by 100 for decimal.
+  Serial.println(newVolume);
+  bgVolume.setVolume(newVolume);
+}
+
+void changeSfxPitch(int p_Pitch)
+{
+  float newPitch = float(p_Pitch) / 100;
+  Serial.println(newPitch);
+  sfxPitch = newPitch;
 }
 
 void scanAudioFiles() {
@@ -498,4 +529,5 @@ void listAllFiles() {
   Serial.println("Type a number to play from RAM and a name to play from SD:");
   Serial.println("Type 'list' to show all files again\n");
 }
+
 
