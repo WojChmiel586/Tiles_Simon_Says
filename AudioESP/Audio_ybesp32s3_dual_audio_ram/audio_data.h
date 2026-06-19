@@ -49584,9 +49584,9 @@ struct Sfx
 static const Sfx sfxList[] = 
 {
   {"nodata",sfxEmptyData,sfxEmptyLen,1},
-  {"success",sfxSuccessData, sfxSuccessLen, 1020},
-  {"partial",sfxPartialData, sfxPartialLen, 1500},
-  {"fail",sfxFailData, sfxFailLen, 1800}
+  {"success",sfxSuccessData, sfxSuccessLen, 1000},
+  {"partial",sfxPartialData, sfxPartialLen, 1300},
+  {"fail",sfxFailData, sfxFailLen, 1300}
 };
 
 const unsigned int sfxAmount = 4;

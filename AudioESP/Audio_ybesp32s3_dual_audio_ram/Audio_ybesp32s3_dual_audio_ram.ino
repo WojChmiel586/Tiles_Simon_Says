@@ -289,16 +289,18 @@ void audioSetup() {
   sfxMemoryStream = new MemoryStream((uint8_t*)sfxFailData,sfxFailLen,true,FLASH_RAM);
   sfxDecoder = new WAVDecoder();
   sfxStream = new EncodedAudioStream(sfxMemoryStream,sfxDecoder);
-  sfxVolume = new VolumeStream(*sfxStream);
-  sfxVolume->setAudioInfo(info);
-  sfxVolume->begin();
-  sfxVolume->setVolume(sfxVolValue);
+  
   //For SFX Pitches
-  sfxResample = new ResampleStream(*sfxVolume);
+  sfxResample = new ResampleStream(*sfxStream);
   ResampleConfig cfg = sfxResample->defaultConfig();
   cfg.step_size = 1.0f;   // normal pitch
   sfxResample->end();
   sfxResample->begin(cfg);
+
+  sfxVolume = new VolumeStream(*sfxResample);
+  sfxVolume->setAudioInfo(info);
+  sfxVolume->begin();
+  sfxVolume->setVolume(sfxVolValue);
 
   sfxStream->begin();
   sfxDecoder->begin();
@@ -307,18 +309,14 @@ void audioSetup() {
 
 void playSfx(int sfx_playing)
 {
-  
   //Ensures stream is turned off
   mixer.setWeight(sfxIndex,0);
   delay(1);
   //Resets Variables for reasignment
   const uint8_t* currentData = nullptr;
   size_t currentLen = 0;
-  delete sfxStream;
-  delete sfxDecoder;
+
   delete sfxMemoryStream;
-  delete sfxVolume;
-  delete sfxResample;
 
   currentData = sfxList[sfx_playing].data;
   currentLen = sfxList[sfx_playing].len;
@@ -326,23 +324,10 @@ void playSfx(int sfx_playing)
   
   //Serial.printf("Data=%p Len=%u\n", currentData, (unsigned)currentLen);
   sfxMemoryStream = new MemoryStream((uint8_t*)currentData,currentLen,true,FLASH_RAM);
-  sfxDecoder = new WAVDecoder();
-  sfxStream = new EncodedAudioStream(sfxMemoryStream,sfxDecoder);
-  sfxVolume = new VolumeStream(*sfxStream);
-  sfxVolume->setAudioInfo(info);
-  sfxVolume->begin();
-  sfxVolume->setVolume(sfxVolValue);
-  //For SFX Pitches
-  sfxResample = new ResampleStream(*sfxVolume);
-  ResampleConfig cfg = sfxResample->defaultConfig();
-  cfg.step_size = sfxPitch;   // normal pitch
-  sfxResample->begin(cfg);
-
 
   //Reinitalise stream into mixer.
   sfxStream->begin();
   sfxDecoder->begin();
-  sfxIndex = mixer.add(*sfxResample,0);
 
   sfxStartTime = millis();
   mixer.setWeight(sfxIndex,100);
@@ -476,6 +461,7 @@ void changeSfxVol(int p_Vol)
   float newVolume = float(p_Vol) / 100; //Divide number by 100 for decimal.
   Serial.println(newVolume);
   sfxVolValue = newVolume;
+  sfxVolume->setVolume(sfxVolValue);
 }
 
 void changeSfxPitch(int p_Pitch)
@@ -483,6 +469,10 @@ void changeSfxPitch(int p_Pitch)
   float newPitch = float(p_Pitch) / 100;
   Serial.println(newPitch);
   sfxPitch = newPitch;
+  ResampleConfig cfg = sfxResample->defaultConfig();
+  cfg.step_size = sfxPitch;   // normal pitch
+  sfxResample->end();
+  sfxResample->begin(cfg);
 }
 
 void scanAudioFiles() {
