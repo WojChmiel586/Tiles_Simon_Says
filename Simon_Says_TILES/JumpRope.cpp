@@ -229,7 +229,7 @@ void JumpRope::Run(unsigned long dt)
                 else if (jumpState == 2) feedbackColor = Colours::yellow;
                 else if (jumpState == 3) feedbackColor = Colours::red;
 
-                board.lightAll(feedbackColor);
+                board.lightAllSection(feedbackColor, 14);
                 feedbackMillis = currentMillis; // start the display timer
             }
 
@@ -304,7 +304,6 @@ void JumpRope::sendResultMessage(int js, int jc)
     msg.id = 6;
     msg.jc = jc;
     msg.js = js;
-    msg.b = 1;
     // airtime is hard-coded to lineDelay for now; extend if needed
     msg.t  = lineDelay;
     board.sendToResults(msg);

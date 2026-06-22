@@ -11,6 +11,8 @@ void Menu::Init()
 {
   board.clearAll();
   board.wipeResults();
+  board.sendToAudio(6,7);
+
 }
 
 void Menu::Run(unsigned long dt)
