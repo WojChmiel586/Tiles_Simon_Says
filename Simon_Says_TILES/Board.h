@@ -11,7 +11,7 @@
 class Board {
 public:
     static const int TILE_COUNT = 16;
-    static const int weightThreshold = 800;
+    static const int weightThreshold = 500;
 
     Board();
 
@@ -27,6 +27,7 @@ public:
     //ESP-NOW sending
     bool sendMessage(const uint8_t* macAddress, struct_message_all& message);
     bool sendToAudio(struct_message_all message);
+    bool sendToAudio(int id, int trackNumber = 0, int SfxNumber = 0);
     bool sendToLaptop(struct_message_all message);
     bool sendToResults(struct_message_all message);
 
@@ -43,16 +44,20 @@ public:
 
 
     //Tile interaction
-    int     pressedTile(); // first pressed tile index or -1
-    bool    tilePressed(int idx, int weightOn = weightThreshold) const;
-    int     toeSensor(int idx) const;
-    int     heelSensor(int idx) const;
-    void    lightAll();
-    void    lightAll(uint32_t c);
-    void    light(int i, uint32_t c = 0, Tile::LEDsections section = Tile::LEDsections::WHOLE);
-    void    blinkBoard(uint32_t c);
-    void    clear(int i);
-    void    clearAll();
+    int                 pressedTile(); // first pressed tile index or -1
+    bool                tilePressed(int idx, int weightOn = weightThreshold) const;
+    std::vector<int>    tilesPressed();
+    int                 toeSensor(int idx) const;
+    int                 heelSensor(int idx) const;
+    bool                toePressed(int idx, int weightOn = weightThreshold);
+    bool                heelPressed(int idx, int weightOn = weightThreshold);
+    void                lightAll();
+    void                lightAll(uint32_t c);
+    void                lightAllSection(uint32_t c, int section);
+    void                light(int i, uint32_t c = 0, Tile::LEDsections section = Tile::LEDsections::WHOLE);
+    void                blinkBoard(uint32_t c);
+    void                clear(int i);
+    void                clearAll();
     std::vector<std::unique_ptr<Tile>> tiles;
 
 

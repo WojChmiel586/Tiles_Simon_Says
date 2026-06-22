@@ -29,6 +29,8 @@ void SimonSays::Init()
   game_sequence.reserve(10);
   player_sequence.reserve(10);
   game_sequence.emplace_back(13);
+
+  board.sendToAudio(6,9);
 }
 
 void SimonSays::Run(unsigned long dt)
@@ -133,6 +135,7 @@ void SimonSays::Run(unsigned long dt)
 
             //Send Succcess sounds to audio ESP
             struct_message_all audioMessage;
+            memset(&audioMessage, 0, sizeof(audioMessage));
             audioMessage.id = 6;
             audioMessage.js = 1;
             board.sendToAudio(audioMessage);
@@ -149,6 +152,7 @@ void SimonSays::Run(unsigned long dt)
           //SOME SORT OF INDICATION OF FAILURE
           //Send Succcess sounds to audio ESP
           struct_message_all audioMessage;
+          memset(&audioMessage, 0, sizeof(audioMessage));
           audioMessage.id = 6;
           audioMessage.js = 3;
           board.sendToAudio(audioMessage);
@@ -159,6 +163,7 @@ void SimonSays::Run(unsigned long dt)
           blinkTime = millis();  // start blink timer immediately
 
           struct_message_all results;
+          memset(&results, 0, sizeof(results));
           results.id = 6;
           results.eA = finalScore - 1;
           board.sendToResults(results);

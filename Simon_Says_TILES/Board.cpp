@@ -112,6 +112,16 @@ bool Board::sendToAudio(struct_message_all message)
     return sendMessage(audioAddress, message);
 }
 
+bool Board::sendToAudio(int id, int trackNumber, int SfxNumber)
+{
+    struct_message_all myData;
+    myData.id = id;
+    myData.jc = trackNumber;
+    myData.js = SfxNumber;
+
+    return sendMessage(audioAddress, myData);
+}
+
 bool Board::sendToLaptop(struct_message_all message)
 {
     return sendMessage(buttonsAddress, message);
@@ -141,6 +151,11 @@ void Board::onDataReceived(const uint8_t *mac_addr, const uint8_t *incomingData,
         return;
     }
 
+    if(idx == 4)
+    {
+        Serial.print("New data for button: ");
+        Serial.println(myData.b);
+    }
     boardsStructBack[idx] = myData;
     newDataAvailable = true;
 }
@@ -200,6 +215,18 @@ bool Board::tilePressed(int idx, int weightOn) const
             tiles[idx]->getHeelSensor() > weightOn);
 }
 
+std::vector<int> Board::tilesPressed()
+{
+    std::vector<int> pressed;
+        for (int i = 0; i < TILE_COUNT; i++) {
+        if (tiles[i] && tiles[i]->isPressed()) 
+        {
+            pressed.push_back(i);
+        }
+    }
+    return pressed;
+}
+
 int Board::toeSensor(int idx) const
 {
     if (idx < 0 || idx >= TILE_COUNT) return 0;
@@ -210,6 +237,22 @@ int Board::heelSensor(int idx) const
 {
     if (idx < 0 || idx >= TILE_COUNT) return 0;
     return tiles[idx]->getHeelSensor();
+}
+
+bool Board::toePressed(int idx, int weightOn)
+{
+    if (tiles[idx]->getToeSensor() > weightOn)
+        return true;
+
+    return false;
+}
+
+bool Board::heelPressed(int idx, int weightOn)
+{
+        if (tiles[idx]->getHeelSensor() > weightOn)
+        return true;
+
+    return false;
 }
 
 void Board::lightAll()
@@ -225,6 +268,14 @@ void Board::lightAll(uint32_t c)
     for (auto& tile : tiles)
     {
         tile->light(c);
+    }
+}
+
+void Board::lightAllSection(uint32_t c, int section)
+{
+    for (auto& tile : tiles)
+    {
+        tile->lightPartially(static_cast<Tile::LEDsections>(section),c);
     }
 }
 
@@ -252,7 +303,10 @@ void Board::blinkBoard(uint32_t c)
     blinkFlag = !blinkFlag;
     if(blinkFlag)
     {
-        lightAll(c);
+    for (auto& tile : tiles)
+    {
+        tile->lightPartially(static_cast<Tile::LEDsections>(14),c);
+    }
     }
     else
     {
