@@ -44,6 +44,26 @@ int bgIndex = -1;
 const float bgVol = 1.0;
 String currentPath;
 
+// ---- Sound Effects  ----
+
+struct SfxVoice 
+{
+  MemoryStream* memory;
+  WAVDecoder* decoder;
+  EncodedAudioStream* stream;
+  VolumeStream* volume;
+  //ResampleStream* resample;
+  int mixerIndex;
+  bool active;
+  uint32_t startTime;
+  uint32_t endTime;
+};
+
+SfxVoice sfx_voices[2]; //Amount of Sound effcts that could play at once.
+int totalSfxVoices = 2;
+//Acting as pointers
+int currentSfx = 0;
+
 //Sound Effects (RAM-Based) Pointers so they can be changed
 MemoryStream* sfxMemoryStream;
 WAVDecoder* sfxDecoder;
@@ -91,10 +111,6 @@ int recvSfxVol = 50;
 int recvSfxPitch = 100;
 bool dataReceived = false; 
 
-// Serial Monitor Menu for testing
-String menu = "home";
-
-
 //Runs when data has been received from ESP
 void OnDataRecv(const esp_now_recv_info_t *info, const uint8_t *incomingData, int len) 
 {
@@ -109,6 +125,27 @@ void OnDataRecv(const esp_now_recv_info_t *info, const uint8_t *incomingData, in
   //recvSfxVol = myResults. //Gives number for sfx volume to change to (1 to 101) 0 Means the volume isn't changing 
   //recvSfxPitch = myResults. //Gives number for sfx pitch to change to (95 to 110) 0 Means the pitch isn't changing 
   dataReceived = true;
+}
+
+//Initiate Sound effect voice structure.
+void initVoices(SfxVoice &v)
+{
+  v.decoder = new WAVDecoder();
+  v.memory = new MemoryStream(nullptr,0,false);
+  v.stream = new EncodedAudioStream(v.memory,v.decoder);
+  //v.resample = new ResampleStream(*v.stream);
+
+  v.volume = new VolumeStream(*v.stream);
+  v.volume->setAudioInfo(info);
+  v.volume->begin();
+
+  v.stream->begin();
+  v.decoder->begin();
+
+  v.mixerIndex = mixer.add(*v.volume, 0);
+  v.active = false;
+  v.startTime = 0;
+  v.endTime = 1300;
 }
 
 // Initalisation
@@ -191,6 +228,25 @@ void setup() {
   Serial.println("Background Music Start!");
   
 }
+void audioSetup() {
+  // Configure I2S Settings
+  auto i2s_config = i2s.defaultConfig(TX_MODE);
+  i2s_config.pin_bck = I2S_BCLK;
+  i2s_config.pin_ws = I2S_LRC;
+  i2s_config.pin_data = I2S_DOUT;
+  i2s_config.sample_rate = 44100;    
+  i2s_config.bits_per_sample = 16;
+  i2s_config.channels = 2;
+  i2s_config.buffer_size = AUDIO_BUFFER_SIZE;
+  i2s_config.buffer_count = 10; 
+  i2s.begin(i2s_config);
+
+  mixer.begin(info);
+  for(int i = 0; i < totalSfxVoices; i++)
+  {
+    initVoices(sfx_voices[i]);
+  }  
+}
 
 void loop() {
   //Keeps audio running
@@ -249,14 +305,15 @@ void loop() {
     //Serial.println("BG music ended");
     playBg(-1,1); //Not passing in new audio (-1), confirmed its looping instead (1)
   }
-
-  //Detect End of SFX
-  if(isSfxPlaying && millis() - sfxStartTime > sfxDurationMs)
+  //Deactivating any sound effects that have ended
+  for(int i = 0; i < totalSfxVoices; i++)
   {
-    mixer.setWeight(sfxIndex,0);
-    //mixer.setWeight(bgIndex,50);
-    isSfxPlaying = false;
-    Serial.println("Sound Effect End");
+    SfxVoice &v = sfx_voices[i];
+    if(v.active && millis() - v.startTime > v.endTime)
+    {
+      v.active = false;
+      mixer.setWeight(v.mixerIndex,0);
+    }
   }
 
   // Read serial input
@@ -275,67 +332,41 @@ void loop() {
 
 }
 
-void audioSetup() {
-  // Configure I2S Settings
-  auto i2s_config = i2s.defaultConfig(TX_MODE);
-  i2s_config.pin_bck = I2S_BCLK;
-  i2s_config.pin_ws = I2S_LRC;
-  i2s_config.pin_data = I2S_DOUT;
-  i2s_config.sample_rate = 44100;    
-  i2s_config.bits_per_sample = 16;
-  i2s_config.channels = 2;
-  i2s_config.buffer_size = AUDIO_BUFFER_SIZE;
-  i2s_config.buffer_count = 10; 
-  i2s.begin(i2s_config);
-
-  mixer.begin(info);
-  //Sfx Stream, allocating base pointers to avoid errors. 
-  sfxMemoryStream = new MemoryStream((uint8_t*)sfxFailData,sfxFailLen,true,FLASH_RAM);
-  sfxDecoder = new WAVDecoder();
-  sfxStream = new EncodedAudioStream(sfxMemoryStream,sfxDecoder);
-  
-  //For SFX Pitches
-  sfxResample = new ResampleStream(*sfxStream);
-  ResampleConfig cfg = sfxResample->defaultConfig();
-  cfg.step_size = 1.0f;   // normal pitch
-  sfxResample->end();
-  sfxResample->begin(cfg);
-
-  sfxVolume = new VolumeStream(*sfxResample);
-  sfxVolume->setAudioInfo(info);
-  sfxVolume->begin();
-  sfxVolume->setVolume(sfxVolValue);
-
-  sfxStream->begin();
-  sfxDecoder->begin();
-  sfxIndex = mixer.add(*sfxVolume, 0); //Starts Muted
-}
-
 void playSfx(int sfx_playing)
 {
   //Ensures stream is turned off
-  mixer.setWeight(sfxIndex,0);
-  delay(1);
+ // mixer.setWeight(sfxIndex,0);
+  //delay(1);
   //Resets Variables for reasignment
+  SfxVoice &v = sfx_voices[currentSfx];
+  v.active = true;
+  mixer.setWeight(v.mixerIndex,0);
+  
   const uint8_t* currentData = nullptr;
   size_t currentLen = 0;
 
-  delete sfxMemoryStream;
-
   currentData = sfxList[sfx_playing].data;
   currentLen = sfxList[sfx_playing].len;
-  sfxDurationMs = sfxList[sfx_playing].ms;
+  //sfxDurationMs = sfxList[sfx_playing].ms;
+  v.endTime = sfxList[sfx_playing].ms;
   
-  //Serial.printf("Data=%p Len=%u\n", currentData, (unsigned)currentLen);
-  sfxMemoryStream = new MemoryStream((uint8_t*)currentData,currentLen,true,FLASH_RAM);
+  delete v.memory;
+  v.memory = new MemoryStream((uint8_t*)currentData,currentLen,true,FLASH_RAM);
 
-  //Reinitalise stream into mixer.
-  sfxStream->begin();
-  sfxDecoder->begin();
+  // v.resample->end();  
+  // ResampleConfig cfg = v.resample->defaultConfig();
+  // cfg.step_size = sfxPitch;   // normal pitch
 
-  sfxStartTime = millis();
-  mixer.setWeight(sfxIndex,100);
+  // v.resample->begin(cfg);
 
+  v.stream->begin();
+  v.decoder -> begin();
+
+  // delete sfxMemoryStream;
+  v.startTime = millis();
+  //sfxStartTime = millis();
+  //mixer.setWeight(sfxIndex,100);
+  mixer.setWeight(v.mixerIndex,100);
   isSfxPlaying = true;
 }
 
@@ -389,8 +420,6 @@ void processSerialCommand(String command) {
     listAllFiles();
     return;
   }
-
-  //Check if command is a number
   bool isNumber = true;
   for (unsigned int i = 0; i < command.length(); i++)
   {
@@ -400,89 +429,59 @@ void processSerialCommand(String command) {
       break;
     }
   }
-  //Debugging menus, bg and sfx are for adjusting their volumes.
-  Serial.println(menu);
-  if(menu == "home")
+  int fileIndex = -1;
+  //For testing purposes, a number is a sound effect, words is the background music
+  if(isNumber)
   {
-    if (command.equalsIgnoreCase("bg")) {
-    menu = "bg";
-    Serial.println("In BG Menu");
-    
-    return;
-    }
-    if (command.equalsIgnoreCase("sfx")) {
-    menu = "sfx";
-    Serial.println("In SFX Menu");
-    return;
-    }
-
-    // --- Calling Sfx / Bg Music + Pitch Bending
-    int fileIndex = -1;
-    //For testing purposes, a number is a sound effect, words is the background music
-    if(isNumber)
+    fileIndex = command.toInt();
+    Serial.println(fileIndex);
+    //Change Sound Effect
+    // if(fileIndex >= 95 && fileIndex <= 110)
+    // {
+    //   Serial.println("Changing Pitch");
+    //   changeSfxPitch(fileIndex);
+    //   return;
+    // }
+    if(fileIndex > sfxAmount - 1) 
     {
-      fileIndex = command.toInt();
-      Serial.println(fileIndex);
-      //Change Sound Effect Pitch
-      if(fileIndex >= 95 && fileIndex <= 110)
-      {
-        Serial.println("Changing Pitch");
-        changeSfxPitch(fileIndex);
-        return;
-      }
-      //If there's no sound effect
-      else if(fileIndex > sfxAmount - 1) 
-      {
-        Serial.println("No SFX fit that number");
-        return; 
-      }
-      playSfx(command.toInt());
+      Serial.println("No SFX fit that number");
+      return; 
     }
-    else
+    currentSfx = -1;
+    for(int i = 0; i < totalSfxVoices; i++)
     {
-      //See if the name inputted matches the name of any audio files in the SD card
-      for (int i = 0; i < totalAudioFiles; i++)
+      SfxVoice &v = sfx_voices[i];
+      if(!v.active)
       {
-        if(audioFiles[i].name.equalsIgnoreCase(command))
-        {
-          fileIndex = i;
-          break;
-        }
+        currentSfx = i;
+        break;
       }
-      if(fileIndex < 0)
-      {
-        Serial.printf("File '%s' not found. Type 'list' to see all files. \n", command.c_str());
-        return;
-      }
-      playBg(fileIndex,0);
     }
-  }
-  else if(menu == "bg")
-  {
-    if(isNumber)
+    if(currentSfx == -1)
     {
-      changeBgVol(command.toInt());
+      Serial.println("No space for new sfx");
       return;
     }
-    if (command.equalsIgnoreCase("back")) {
-    menu = "home";
-    Serial.println("In Main Menu");
-    return;
-    }
+    playSfx(command.toInt());
   }
-  else if(menu == "sfx")
+  else
   {
-    if(isNumber)
+    for (int i = 0; i < totalAudioFiles; i++)
     {
-      changeSfxVol(command.toInt());
+      if(audioFiles[i].name.equalsIgnoreCase(command))
+      {
+        fileIndex = i;
+        break;
+      }
+    }
+    if(fileIndex < 0)
+    {
+      Serial.printf("File '%s' not found. Type 'list' to see all files. \n", command.c_str());
       return;
     }
-    if (command.equalsIgnoreCase("back")) {
-    menu = "home";
-    Serial.println("In Main Menu");
-    return;
-    }
+    playBg(fileIndex,0);
   }
+  
   return;
 }
 
@@ -512,7 +511,11 @@ void changeSfxVol(int p_Vol)
   float newVolume = float(p_Vol) / 100; //Divide number by 100 for decimal.
   Serial.println(newVolume);
   sfxVolValue = newVolume;
-  sfxVolume->setVolume(sfxVolValue);
+  for (int i = 0; i < totalSfxVoices; i++)
+  {
+    sfx_voices[i].volume->setVolume(sfxVolValue);
+  }
+  //sfxVolume->setVolume(sfxVolValue);
 }
 
 void changeSfxPitch(int p_Pitch)
@@ -520,10 +523,10 @@ void changeSfxPitch(int p_Pitch)
   float newPitch = float(p_Pitch) / 100;
   Serial.println(newPitch);
   sfxPitch = newPitch;
-  ResampleConfig cfg = sfxResample->defaultConfig();
-  cfg.step_size = sfxPitch;   // normal pitch
-  sfxResample->end();
-  sfxResample->begin(cfg);
+  // ResampleConfig cfg = sfxResample->defaultConfig();
+  // cfg.step_size = sfxPitch;   // normal pitch
+  // sfxResample->end();
+  // sfxResample->begin(cfg);
 }
 
 void scanAudioFiles() {
