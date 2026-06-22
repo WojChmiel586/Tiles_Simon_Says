@@ -69,10 +69,11 @@ bool Calibration::isDone() const
 // Run – dispatcher
 // =============================================================================
 
-void Calibration::Run(unsigned long /*dt*/)
+void Calibration::Run(unsigned long dt)
 {
     loadSensorData();
     unsigned long now = millis();
+    deltaTime = dt;
 
     switch (exercise) {
         case 91: runCalib1(now);   break;
@@ -115,6 +116,12 @@ bool Calibration::pressed(int idx) const { return toe(idx) > weightOn || heel(id
 // T10 = board tile index 9  (row 3, col 2, 0-based)
 // T11 = board tile index 10 (row 3, col 3, 0-based)
 // The original strip10/strip11 are 0-based array positions 9 and 10.
+
+void PrintScore(unsigned long score)
+{
+    Serial.print("current score: ");
+    Serial.println(score);
+}
 
 void Calibration::prepCalib4()
 {
@@ -222,6 +229,8 @@ void Calibration::finishTapStep(int tileIdx, bool stepbackIsLeft, CalibState nex
     if (stepbackIsLeft) stepBackLeftTap(); else stepBackRightTap();
     startMillis = millis();
     calibState  = nextState;
+    Serial.print("MobScore is: ");
+    Serial.println(mobScore);
 }
 
 // =============================================================================
@@ -315,15 +324,35 @@ void Calibration::runCalib2(unsigned long now)
             }
             break;
 
-        case BAL1END:  // balance on left (T10): toe18>on, heel19>on, T11 both <on
-            if (sensorValue[26] > weightOn && sensorValue[27] > weightOn &&
-                sensorValue[28] < weightOn && sensorValue[29] < weightOn) {
-                balChecker++;
-                balanceAchieved = balChecker / 200;
+        case BAL1END:  // balance on left (T14): toe18>on, heel19>on, T11 both <on
+            if (board.tilePressed(13, weightOn))
+            {
+                if(board.tilesPressed().size() != 1)
+                {
+                    if(balChecker > calib2Results[0])
+                    {
+                        calib2Results[0] = balChecker;
+                    }
+                    balChecker = 0;
+                }
+                else
+                {
+                    //Increment score
+                    balChecker += deltaTime;
+                }
+
+                PrintScore(balChecker);
+                
+                //balChecker++;
+                //balanceAchieved = balChecker / 200;
             }
             if (now - startMillis >= (unsigned long)(balanceDelay * 2)) {
                 clearT14T15();
-                balanceScore   += balanceAchieved;
+                //balanceScore   += balanceAchieved;#
+                if(balChecker > calib2Results[0])
+                    {
+                        calib2Results[0] = balChecker;
+                    }
                 balChecker      = 0;
                 balanceAchieved = 0;
                 startMillis     = now;
@@ -339,15 +368,34 @@ void Calibration::runCalib2(unsigned long now)
             }
             break;
 
-        case BAL2END:  // balance on right (T11)
-            if (sensorValue[26] < weightOn && sensorValue[27] < weightOn &&
-                sensorValue[28] > weightOn && sensorValue[29] > weightOn) {
-                balChecker++;
-                balanceAchieved = balChecker / 200;
+        case BAL2END:  // balance on right (T15)
+             if (board.tilePressed(14, weightOn))
+            {
+                if(board.tilesPressed().size() != 1)
+                {
+                    if(balChecker > calib2Results[1])
+                    {
+                        calib2Results[1] = balChecker;
+                    }
+                    balChecker = 0;
+                }
+                else
+                {
+                    //Increment score
+                    balChecker += deltaTime;
+                }
+                
+                PrintScore(balChecker);
+                //balChecker++;
+                //balanceAchieved = balChecker / 200;
             }
             if (now - startMillis >= (unsigned long)(balanceDelay * 2)) {
                 clearT14T15();
-                balanceScore   += balanceAchieved;
+                //balanceScore   += balanceAchieved;
+                if(balChecker > calib2Results[1])
+                    {
+                        calib2Results[1] = balChecker;
+                    }
                 balChecker      = 0;
                 balanceAchieved = 0;
                 startMillis     = now;
@@ -367,14 +415,27 @@ void Calibration::runCalib2(unsigned long now)
             break;
 
         case BAL3END:  // balance on toes: T10A>on, T11A>on, heels <on
-            if (sensorValue[26] > weightOn && sensorValue[27] < weightOn &&
-                sensorValue[28] > weightOn && sensorValue[29] < weightOn) {
-                balChecker++;
-                balanceAchieved = balChecker / 100;
+            if ((board.toePressed(13) && board.toePressed(14)) && (!board.heelPressed(13) && !board.heelPressed(14)))
+            {
+                balChecker += deltaTime;
             }
+            else
+            {
+                if(balChecker > calib2Results[2])
+                {
+                    calib2Results[2] = balChecker;
+                }
+                balChecker = 0;
+            }
+
+            PrintScore(balChecker);
             if (now - startMillis >= (unsigned long)balanceDelay) {
                 clearT14T15();
-                balanceScore   += balanceAchieved;
+                //balanceScore   += balanceAchieved;
+                if(balChecker > calib2Results[2])
+                {
+                    calib2Results[2] = balChecker;
+                }
                 balChecker      = 0;
                 balanceAchieved = 0;
                 startMillis     = now;
@@ -394,19 +455,49 @@ void Calibration::runCalib2(unsigned long now)
             break;
 
         case BAL4END:  // balance on heels: T10B>on, T11B>on, toes <on
-            if (sensorValue[26] < weightOn && sensorValue[27] > weightOn &&
-                sensorValue[28] < weightOn && sensorValue[29] > weightOn) {
-                balChecker++;
-                balanceAchieved = balChecker / 100;
+            if ((!board.toePressed(13) && !board.toePressed(14)) && (board.heelPressed(13) && board.heelPressed(14)))
+            {
+                balChecker += deltaTime;
             }
+            else
+            {
+                if(balChecker > calib2Results[3])
+                {
+                    calib2Results[3] = balChecker;
+                }
+                balChecker = 0;
+            }
+            PrintScore(balChecker);            
             if (now - startMillis >= (unsigned long)balanceDelay) {
                 clearT14T15();
-                balanceScore   += balanceAchieved;
-                balanceScore   /= 4;  // average across 4 phases
+                if(balChecker > calib2Results[3])
+                {
+                    calib2Results[3] = balChecker;
+                }
+                balChecker = 0;
+
+                //calculate score
+                balanceScore += calib2Results[0] * 1.5f;
+                balanceScore += calib2Results[1] * 1.5f;                
+                balanceScore += calib2Results[2] * 0.5f;
+                balanceScore += calib2Results[3] * 0.5f;       
+
+                Serial.print("score 1 :");
+                Serial.println(calib2Results[0]);
+                Serial.print("score 2 :");
+                Serial.println(calib2Results[1]);
+                Serial.print("score 3 :");
+                Serial.println(calib2Results[2]);
+                Serial.print("score 4 :");
+                Serial.println(calib2Results[3]);
+                Serial.print("Total score: ");
+                Serial.println(balanceScore);
+                Serial.print("Score percentage: ");
+                Serial.println(balanceScore / 700.0f);
 
                 struct_message_all msg{};
                 msg.id = 6;
-                msg.fA = balanceScore;
+                msg.fA = balanceScore / 700.0f;
                 sendResult(msg);
 
                 balChecker      = 0;
@@ -462,15 +553,22 @@ void Calibration::runCalib3(unsigned long now)
             break;
 
         case SIDE1END:  // balance on right leg (T11)
-            if (sensorValue[26] < weightOn && sensorValue[27] < weightOn &&
-                sensorValue[28] > weightOn && sensorValue[29] > weightOn) {
-                balChecker++;
-                balanceAchieved = balChecker / 20;
+            if (board.tilePressed(14, weightOn))
+            {
+                if(board.tilesPressed().size() == 1)
+                {
+                    balChecker += deltaTime;
+                }
+
+                PrintScore(balChecker);
+                
+                //balChecker++;
+                //balanceAchieved = balChecker / 200;
             }
             if (now - startMillis >= (unsigned long)sideliftDelay) {
                 board.clearAll();
                 prepCalib4();
-                balanceScoreSide += balanceAchieved;
+                balanceRight += balChecker;
                 balChecker        = 0;
                 balanceAchieved   = 0;
                 exCounter++;
@@ -496,25 +594,43 @@ void Calibration::runCalib3(unsigned long now)
             break;
 
         case SIDE2END:  // balance on left leg (T10)
-            if (sensorValue[26] > weightOn && sensorValue[27] > weightOn &&
-                sensorValue[28] < weightOn && sensorValue[29] < weightOn) {
-                balChecker++;
-                balanceAchieved = balChecker / 20;
+            if (board.tilePressed(13, weightOn))
+            {
+                if(board.tilesPressed().size() == 1)
+                {
+                    balChecker += deltaTime;
+                }
+
+                PrintScore(balChecker);
+                
+                //balChecker++;
+                //balanceAchieved = balChecker / 200;
             }
             if (now - startMillis >= (unsigned long)sideliftDelay) {
                 board.clearAll();
                 prepCalib4();
-                balanceScoreSide += balanceAchieved;
+                balanceLeft += balChecker;
                 balChecker        = 0;
                 balanceAchieved   = 0;
                 exCounter++;
 
                 if (exCounter == 10) {
-                    balanceScoreSide /= 10;
+
+                    Serial.print("total left score: ");
+                    Serial.println(balanceLeft);
+                    Serial.print("total right score: ");
+                    Serial.println(balanceRight);
+
+                    balanceScoreSide = balanceLeft + balanceRight;
+
+                    Serial.print("total score points/percentage: ");
+                    Serial.print(balanceScoreSide);
+                    Serial.print(" / ");
+                    Serial.println(balanceScoreSide/200.0f);
 
                     struct_message_all msg{};
                     msg.id = 6;
-                    msg.dB = balanceScoreSide;
+                    msg.fB = balanceScoreSide / 200.0f;
                     sendResult(msg);
 
                     balChecker       = 0;
@@ -826,8 +942,7 @@ void Calibration::runCalib4(unsigned long now)
 
                     struct_message_all msg{};
                     msg.id = 6;
-                    msg.dA = mobScore;
-                    msg.eB = maxcount;
+                    msg.dA = maxcount / 32.0f;
                     sendResult(msg);
 
                     exCounter  = 0;

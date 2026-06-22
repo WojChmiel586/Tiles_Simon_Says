@@ -79,7 +79,7 @@ struct LEDSegment
   int _pin;
   int _toeSensor;
   int _heelSensor;
-  int threshold = 800;
+  int threshold = 500;
   uint32_t colour = 0;
 
 };

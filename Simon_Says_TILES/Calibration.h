@@ -45,7 +45,7 @@ private:
     // =========================================================================
     // Shared timing / scoring variables (mirror the originals)
     // =========================================================================
-    static constexpr int weightOn       = 200;
+    static constexpr int weightOn       = 400;
     static constexpr int stepDelay      = 500;
     static constexpr int stepDelaymob   = (int)(stepDelay * 1.5); // 750
     static constexpr int balanceDelay   = stepDelay * 20;          // 10 000 ms
@@ -55,11 +55,14 @@ private:
     static constexpr int squat2Delay    = stepDelay * 8;           // 4 000 ms
     static constexpr int airtimeDefault = 550;
 
+    unsigned long calib2Results[4] = {0,0,0,0};
     int exCounter        = 0;
     int balanceScore     = 0;
     int balChecker       = 0;
     int balanceAchieved  = 0;
     int balanceScoreSide = 0;
+    int balanceLeft      = 0;
+    int balanceRight     = 0;
     int balanceScoreDyn  = 0;
     int maxcount         = 0;
     int mobScore         = 0;

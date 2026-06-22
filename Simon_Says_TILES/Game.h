@@ -15,6 +15,7 @@ class Game
 
   protected:
     Board& board;
+    unsigned long deltaTime = 0;
 
   private:
 };
