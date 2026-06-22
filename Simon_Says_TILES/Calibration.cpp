@@ -999,10 +999,25 @@ void Calibration::runCalib5(unsigned long now)
             break;
 
         case LUNGE1END:  // balance on right leg (T7): T6 off, T7 on
-            if (sensorValue[10] < weightOn && sensorValue[11] < weightOn &&
-                sensorValue[12] > weightOn && sensorValue[13] > weightOn) {
-                balChecker++;
-                balanceAchieved = balChecker / 20;
+        //Scoring based on the furthest sensor pressed during the attempt
+            if (board.tilePressed(6, weightOn))
+            {
+                if(board.toePressed(9) && balanceAchieved < 100)
+                {
+                    balanceAchieved = 100;
+                }
+                else if(board.heelPressed(9) && balanceAchieved < 150)
+                {
+                    balanceAchieved = 150;
+                }
+                else if(board.toePressed(13) && balanceAchieved < 200)
+                {
+                    balanceAchieved = 200;
+                }
+                else if(board.heelPressed(13) && balanceAchieved < 250)
+                {
+                    balanceAchieved = 250;
+                }
             }
             if (now - startMillis >= (unsigned long)lungeDelay) {
                 clearLungeTiles();
@@ -1030,10 +1045,24 @@ void Calibration::runCalib5(unsigned long now)
             break;
 
         case LUNGE2END:  // balance on left leg (T6)
-            if (sensorValue[10] > weightOn && sensorValue[11] > weightOn &&
-                sensorValue[12] < weightOn && sensorValue[13] < weightOn) {
-                balChecker++;
-                balanceAchieved = balChecker / 20;
+            if (board.tilePressed(5, weightOn))
+            {
+                if(board.toePressed(10) && balanceAchieved < 100)
+                {
+                    balanceAchieved = 100;
+                }
+                else if(board.heelPressed(10) && balanceAchieved < 150)
+                {
+                    balanceAchieved = 150;
+                }
+                else if(board.toePressed(14) && balanceAchieved < 200)
+                {
+                    balanceAchieved = 200;
+                }
+                else if(board.heelPressed(14)  && balanceAchieved < 250)
+                {
+                    balanceAchieved = 250;
+                }
             }
             if (now - startMillis >= (unsigned long)lungeDelay) {
                 clearLungeTiles();
@@ -1042,12 +1071,14 @@ void Calibration::runCalib5(unsigned long now)
                 balanceScoreDyn += balanceAchieved;
                 exCounter++;
 
-                if (exCounter == 10) {
-                    balanceScoreDyn /= 10;
-
+                if (exCounter == 10) 
+                {
+                    //Score calculated as percentage of max possible result of 2500
+                    PrintScore(balanceScoreDyn/25)
+                    
                     struct_message_all msg{};
                     msg.id = 6;
-                    msg.fB = balanceScoreDyn;
+                    msg.fB = balanceScoreDyn/25;
                     sendResult(msg);
 
                     balChecker      = 0;
