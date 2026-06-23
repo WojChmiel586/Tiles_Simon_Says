@@ -80,6 +80,10 @@ float sfxVolValue = 0.70;
 static uint32_t sfxStartTime = 0;
 uint32_t sfxDurationMs = 2000;
 
+//Debugging Menu
+String menu = "home";
+
+
 //Defining Varaibles and Functions for Audio Mixer END
 
 struct AudioFile {
@@ -430,58 +434,98 @@ void processSerialCommand(String command) {
     }
   }
   int fileIndex = -1;
-  //For testing purposes, a number is a sound effect, words is the background music
-  if(isNumber)
+  if(menu == "home")
   {
-    fileIndex = command.toInt();
-    Serial.println(fileIndex);
-    //Change Sound Effect
-    // if(fileIndex >= 95 && fileIndex <= 110)
-    // {
-    //   Serial.println("Changing Pitch");
-    //   changeSfxPitch(fileIndex);
-    //   return;
-    // }
-    if(fileIndex > sfxAmount - 1) 
-    {
-      Serial.println("No SFX fit that number");
-      return; 
+    if (command.equalsIgnoreCase("bg")) {
+    menu = "bg";
+    Serial.println("Now in BG Menu");
+    return;
     }
-    currentSfx = -1;
-    for(int i = 0; i < totalSfxVoices; i++)
+    if (command.equalsIgnoreCase("sfx")) {
+    menu = "sfx";
+    Serial.println("Now in SFX Menu");
+    return;
+    }
+    //For testing purposes, a number is a sound effect, words is the background music
+    if(isNumber)
     {
-      SfxVoice &v = sfx_voices[i];
-      if(!v.active)
+      fileIndex = command.toInt();
+      Serial.println(fileIndex);
+      //Change Sound Effect
+      // if(fileIndex >= 95 && fileIndex <= 110)
+      // {
+      //   Serial.println("Changing Pitch");
+      //   changeSfxPitch(fileIndex);
+      //   return;
+      // }
+      if(fileIndex > sfxAmount - 1) 
       {
-        currentSfx = i;
-        break;
+        Serial.println("No SFX fit that number");
+        return; 
       }
+      currentSfx = -1;
+      for(int i = 0; i < totalSfxVoices; i++)
+      {
+        SfxVoice &v = sfx_voices[i];
+        if(!v.active)
+        {
+          currentSfx = i;
+          break;
+        }
+      }
+      if(currentSfx == -1)
+      {
+        Serial.println("No space for new sfx");
+        return;
+      }
+      playSfx(command.toInt());
     }
-    if(currentSfx == -1)
+    else
     {
-      Serial.println("No space for new sfx");
+      for (int i = 0; i < totalAudioFiles; i++)
+      {
+        if(audioFiles[i].name.equalsIgnoreCase(command))
+        {
+          fileIndex = i;
+          break;
+        }
+      }
+      if(fileIndex < 0)
+      {
+        Serial.printf("File '%s' not found. Type 'list' to see all files. \n", command.c_str());
+        return;
+      }
+      playBg(fileIndex,0);
+    }
+  }
+  else if(menu == "bg")
+  {
+    if(isNumber)
+    {
+      changeBgVol(command.toInt());
       return;
     }
-    playSfx(command.toInt());
-  }
-  else
-  {
-    for (int i = 0; i < totalAudioFiles; i++)
+    if (command.equalsIgnoreCase("back")) 
     {
-      if(audioFiles[i].name.equalsIgnoreCase(command))
-      {
-        fileIndex = i;
-        break;
-      }
-    }
-    if(fileIndex < 0)
-    {
-      Serial.printf("File '%s' not found. Type 'list' to see all files. \n", command.c_str());
+      menu = "home";
+      Serial.println("In Main Menu");
       return;
     }
-    playBg(fileIndex,0);
   }
-  
+  else if(menu == "sfx")
+  {
+    if(isNumber)
+    {
+      changeSfxVol(command.toInt());
+      return;
+    }
+    if (command.equalsIgnoreCase("back")) 
+    {
+      menu = "home";
+      Serial.println("In Main Menu");
+      return;
+    }
+  }
   return;
 }
 
