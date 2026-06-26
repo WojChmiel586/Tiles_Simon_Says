@@ -3,12 +3,14 @@
 #include <FS.h>
 #include <SPI.h>
 #include "audio_data.h"
+#include "AudioStructs.h"
 //For the next libraies to work, if AudioTools by pschatzmann isn't available in the library
 //Will have to manually install them via the termial doing 'git install https://github.com/pschatzmann/arduino-audio-tools' into the Arduino Library Folder.
 #include "AudioTools.h"
 #include "AudioTools/AudioCodecs/CodecWAV.h"
 #include "AudioTools/CoreAudio/ResampleStream.h"
-
+//For writing to PSRAM
+#include "esp_heap_caps.h"
 
 // SD Card pins for YB-ESP32-S3-AMP
 #define SD_CS 10
@@ -44,27 +46,12 @@ int bgIndex = -1;
 const float bgVol = 1.0;
 String currentPath;
 
-// ---- Sound Effects  ----
-
-struct SfxVoice 
-{
-  MemoryStream* memory;
-  WAVDecoder* decoder;
-  EncodedAudioStream* stream;
-  VolumeStream* volume;
-  //ResampleStream* resample;
-  int mixerIndex;
-  bool active;
-  uint32_t startTime;
-  uint32_t endTime;
-};
-
 SfxVoice sfx_voices[2]; //Amount of Sound effcts that could play at once.
 int totalSfxVoices = 2;
 //Acting as pointers
 int currentSfx = 0;
 
-//Sound Effects (RAM-Based) Pointers so they can be changed
+//Sound Effects (Flash Memory-Based) Pointers so they can be changed
 MemoryStream* sfxMemoryStream;
 WAVDecoder* sfxDecoder;
 EncodedAudioStream* sfxStream;
@@ -80,9 +67,14 @@ float sfxVolValue = 0.70;
 static uint32_t sfxStartTime = 0;
 uint32_t sfxDurationMs = 2000;
 
+//Sound Effects (PSRAM)
+int numSounds = 7;
+SoundEffect sounds[7];
 //Debugging Menu
 String menu = "home";
 
+enum GameStates {MENU,JUMP,SIMON,CALIBRATION};
+GameStates currentGS = MENU;
 
 //Defining Varaibles and Functions for Audio Mixer END
 
@@ -152,11 +144,21 @@ void initVoices(SfxVoice &v)
   v.endTime = 1300;
 }
 
+
 // Initalisation
 void setup() {
   Serial.begin(115200);
   WiFi.mode(WIFI_STA);
   delay(1000);
+
+  Serial.printf("Total heap: %d", ESP.getHeapSize());
+  Serial.println("");
+  Serial.printf("Free heap: %d", ESP.getFreeHeap());
+  Serial.println("");
+  Serial.printf("Total PSRAM: %d", ESP.getPsramSize());
+  Serial.println("");
+  Serial.printf("Free PSRAM: %d", ESP.getFreePsram());
+  Serial.println("");
 
   // Initialize ESP-NOW
   if (esp_now_init() != ESP_OK) {
@@ -215,8 +217,8 @@ void setup() {
   }
 
   // Set up background music, background music comes from the SD Card because they're larger files, Have to be WAV.
-  bgFile = SD.open("/theme.wav");
-  currentPath = "/theme.wav";
+  bgFile = SD.open("/m_intro.wav");
+  currentPath = "/m_disco02.wav";
   if(!bgFile)
   {
     Serial.println("Background music missing.");
@@ -227,7 +229,7 @@ void setup() {
   //Starts background music volume, so it can be changed throughout
   bgVolume.setAudioInfo(info);
   bgVolume.begin();
-  bgVolume.setVolume(0.50); //Start at half volume (100% volume == 1)
+  bgVolume.setVolume(0.70); //Start at half volume (100% volume == 1)
   bgIndex = mixer.add(bgVolume, 100);
   Serial.println("Background Music Start!");
   
@@ -246,10 +248,17 @@ void audioSetup() {
   i2s.begin(i2s_config);
 
   mixer.begin(info);
+  //Loading SFX Sounds based on STRUCT calling from Flash Memory
   for(int i = 0; i < totalSfxVoices; i++)
   {
     initVoices(sfx_voices[i]);
-  }  
+  } 
+  //Initiatate PSRAM sound effects
+  for(int i=0; i < numSounds; i++)
+  {
+    sounds[i].data = nullptr;
+    sounds[i].length = 0;
+  }
 }
 
 void loop() {
@@ -336,11 +345,52 @@ void loop() {
 
 }
 
+void loadGameSounds(GameStates current)
+{
+  currentGS = current;
+  freeSounds();
+  switch (current)
+  {
+    case MENU:
+    //Selection Jinggles 
+      loadSound("/sfxJump.wav",sounds[0]); //Jump Rope
+      loadSound("/sfxSimon.wav",sounds[1]); //Simon Says
+      loadSound("/sfxCalib.wav",sounds[2]); //Calibrations / Exercise
+    break;
+    case JUMP: 
+    //Success, partial and fail
+      loadSound("/sfxSuccess.wav",sounds[0]); //Success
+      loadSound("/sfxPartial.wav",sounds[1]); //Partial
+      loadSound("/sfxFail.wav",sounds[2]); //Fail
+    break;
+    case SIMON: 
+    //Simon Says incrementing Sounds
+      loadSound("/sfxS1.wav",sounds[0]);
+      loadSound("/sfxS2.wav",sounds[1]);
+      loadSound("/sfxS3.wav",sounds[2]);
+      loadSound("/sfxS4.wav",sounds[3]);
+      loadSound("/sfxS5.wav",sounds[4]);
+      loadSound("/sfxS6.wav",sounds[5]);
+      loadSound("/sfxS7.wav",sounds[6]);
+    break;
+    case CALIBRATION: 
+    //Sound effects for all exercises
+      loadSound("/sfxS1.wav",sounds[0]); //Start Exercise
+      loadSound("/sfxS1.wav",sounds[1]); //End Exercise
+      loadSound("/sfxS1.wav",sounds[2]); //Jump Indication
+    break;
+  }
+  Serial.printf("Total PSRAM: %d", ESP.getPsramSize());
+  Serial.println("");
+  Serial.printf("Free PSRAM: %d", ESP.getFreePsram());
+  Serial.println("");
+  Serial.printf("Largest block: %u\n",
+              heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM));
+}
+
+
 void playSfx(int sfx_playing)
 {
-  //Ensures stream is turned off
- // mixer.setWeight(sfxIndex,0);
-  //delay(1);
   //Resets Variables for reasignment
   SfxVoice &v = sfx_voices[currentSfx];
   v.active = true;
@@ -348,28 +398,41 @@ void playSfx(int sfx_playing)
   
   const uint8_t* currentData = nullptr;
   size_t currentLen = 0;
-
-  currentData = sfxList[sfx_playing].data;
-  currentLen = sfxList[sfx_playing].len;
-  //sfxDurationMs = sfxList[sfx_playing].ms;
-  v.endTime = sfxList[sfx_playing].ms;
+  Serial.println(sfx_playing);
+  Serial.println("");
+  //If playing from Flash Memory
+  // if(sfx_playing <= 3)
+  // {
+  //   currentData = sfxList[sfx_playing].data;
+  //   currentLen = sfxList[sfx_playing].len;
+  //   //sfxDurationMs = sfxList[sfx_playing].ms;
+  //   v.endTime = sfxList[sfx_playing].ms;
+  // }
+  //If playing from PSRAM Simon Says Tiles
+  if(sfx_playing >= 0 && sfx_playing <= 6)
+  {
+    Serial.println(sfx_playing);
+    Serial.println("Playing Simon Say sound effect");
+    currentData = sounds[sfx_playing].data;
+    currentLen = sounds[sfx_playing].length;
+    if(currentGS == JUMP)
+    {
+      v.endTime = sfxList[sfx_playing+1].ms;
+    }
+    else
+    {
+      v.endTime = 1500;
+    }
+    
+  }
   
   delete v.memory;
   v.memory = new MemoryStream((uint8_t*)currentData,currentLen,true,FLASH_RAM);
 
-  // v.resample->end();  
-  // ResampleConfig cfg = v.resample->defaultConfig();
-  // cfg.step_size = sfxPitch;   // normal pitch
-
-  // v.resample->begin(cfg);
-
   v.stream->begin();
   v.decoder -> begin();
 
-  // delete sfxMemoryStream;
   v.startTime = millis();
-  //sfxStartTime = millis();
-  //mixer.setWeight(sfxIndex,100);
   mixer.setWeight(v.mixerIndex,100);
   isSfxPlaying = true;
 }
@@ -424,6 +487,25 @@ void processSerialCommand(String command) {
     listAllFiles();
     return;
   }
+
+  //Load Audio if game has changed
+  if (command.equalsIgnoreCase("menu")) {
+    loadGameSounds(MENU);
+    return;
+  }
+  else if (command.equalsIgnoreCase("jump")) {
+    loadGameSounds(JUMP);
+    return;
+  }
+  else if (command.equalsIgnoreCase("simon")) {
+    loadGameSounds(SIMON);
+    return;
+  }
+  else if (command.equalsIgnoreCase("calibration")) {
+    loadGameSounds(CALIBRATION);
+    return;
+  }
+
   bool isNumber = true;
   for (unsigned int i = 0; i < command.length(); i++)
   {
@@ -436,34 +518,34 @@ void processSerialCommand(String command) {
   int fileIndex = -1;
   if(menu == "home")
   {
-    if (command.equalsIgnoreCase("bg")) {
-    menu = "bg";
-    Serial.println("Now in BG Menu");
-    return;
+    // --- Changing Serial Input Menu ---
+    if (command.equalsIgnoreCase("bg")) 
+    {
+      menu = "bg";
+      Serial.println("Now in BG Menu");
+      return;
     }
-    if (command.equalsIgnoreCase("sfx")) {
-    menu = "sfx";
-    Serial.println("Now in SFX Menu");
-    return;
+    if (command.equalsIgnoreCase("sfx")) 
+    {
+      menu = "sfx";
+      Serial.println("Now in SFX Menu");
+      return;
     }
     //For testing purposes, a number is a sound effect, words is the background music
     if(isNumber)
     {
       fileIndex = command.toInt();
       Serial.println(fileIndex);
-      //Change Sound Effect
-      // if(fileIndex >= 95 && fileIndex <= 110)
-      // {
-      //   Serial.println("Changing Pitch");
-      //   changeSfxPitch(fileIndex);
-      //   return;
-      // }
-      if(fileIndex > sfxAmount - 1) 
+      int s_boundary = numSounds;
+      //Checks if there's a possible sound effect in the number
+      if(currentGS != SIMON){s_boundary = 3;}
+      if(fileIndex > s_boundary) 
       {
         Serial.println("No SFX fit that number");
         return; 
       }
       currentSfx = -1;
+      //Checks if there's a channel free in the mixer for the sound effect to play.
       for(int i = 0; i < totalSfxVoices; i++)
       {
         SfxVoice &v = sfx_voices[i];
@@ -478,7 +560,7 @@ void processSerialCommand(String command) {
         Serial.println("No space for new sfx");
         return;
       }
-      playSfx(command.toInt());
+      playSfx(command.toInt()-1);
     }
     else
     {
@@ -571,6 +653,49 @@ void changeSfxPitch(int p_Pitch)
   // cfg.step_size = sfxPitch;   // normal pitch
   // sfxResample->end();
   // sfxResample->begin(cfg);
+}
+
+//Load sounds from SD Card to PSRAM
+bool loadSound(const char *filename, SoundEffect &sound)
+{  
+  //Open Sound Effect from files
+  File file = SD.open(filename);
+  if(!file)
+  {
+    Serial.println(filename);
+    Serial.printf("Couldn't open %s\n", filename);
+    return false;
+  }
+
+  //Allocate the size and data of file in a form that can be stored in PSRAM
+  sound.length = file.size();
+  sound.data = (uint8_t*)heap_caps_malloc(sound.length,MALLOC_CAP_SPIRAM);
+
+  if(sound.data == nullptr)
+  {
+    Serial.printf("Couldn't allocat %u bytes\n", sound.length);
+    file.close();
+    return false;
+  }
+
+  file.read(sound.data, sound.length);
+  file.close();
+
+  Serial.printf("Loaded %s (%u bytes)\n", filename, sound.length);
+  return true;
+}
+
+void freeSounds()
+{
+  for(int i = 0; i < numSounds; i++)
+  {
+    if(sounds[i].data)
+    {
+      free(sounds[i].data);
+      sounds[i].data = nullptr;
+      sounds[i].length = 0;
+    }
+  }
 }
 
 void scanAudioFiles() {
