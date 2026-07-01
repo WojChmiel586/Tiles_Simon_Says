@@ -1074,11 +1074,11 @@ void Calibration::runCalib5(unsigned long now)
                 if (exCounter == 10) 
                 {
                     //Score calculated as percentage of max possible result of 2500
-                    PrintScore(balanceScoreDyn/25)
+                    PrintScore(balanceScoreDyn/25);
                     
                     struct_message_all msg{};
                     msg.id = 6;
-                    msg.fB = balanceScoreDyn/25;
+                    msg.dB = balanceScoreDyn/25;
                     sendResult(msg);
 
                     balChecker      = 0;

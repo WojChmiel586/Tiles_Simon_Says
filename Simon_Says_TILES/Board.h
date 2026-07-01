@@ -7,6 +7,7 @@
 #include "Colours.h"
 #include "Tile.h"
 #include "ESPNowStruct.h"
+#include "AudioEnums.h"
 
 class Board {
 public:
@@ -27,7 +28,7 @@ public:
     //ESP-NOW sending
     bool sendMessage(const uint8_t* macAddress, struct_message_all& message);
     bool sendToAudio(struct_message_all message);
-    bool sendToAudio(int id, int trackNumber = 0, int SfxNumber = 0);
+    bool sendToAudio(int trackNumber = 0, int SfxNumber = 0);
     bool sendToLaptop(struct_message_all message);
     bool sendToResults(struct_message_all message);
 
@@ -41,6 +42,10 @@ public:
     void updateFromESPNOW(struct_message_all boards[]);
     struct_message_all* getStructFront() {return boardsStructFront; };
     void wipeResults();
+
+    //AUDIO
+    bool PlaySFX(AudioEnums::SFX sfx);
+    bool PlaySong(AudioEnums::SONGS song);
 
 
     //Tile interaction

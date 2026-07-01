@@ -112,10 +112,10 @@ bool Board::sendToAudio(struct_message_all message)
     return sendMessage(audioAddress, message);
 }
 
-bool Board::sendToAudio(int id, int trackNumber, int SfxNumber)
+bool Board::sendToAudio(int trackNumber, int SfxNumber)
 {
     struct_message_all myData;
-    myData.id = id;
+    myData.id = 6;
     myData.jc = trackNumber;
     myData.js = SfxNumber;
 
@@ -173,6 +173,28 @@ void Board::processRecievedData()
         memcpy(boardsStructFront, boardsStructBack, sizeof(boardsStructBack));
         updateFromESPNOW(boardsStructFront);
     }
+}
+
+
+//AUDIO
+bool Board::PlaySFX(AudioEnums::SFX sfx)
+{
+    struct_message_all myData;
+    memset(&myData, 0, sizeof(myData));
+    myData.id = 6;
+    myData.js = SfxNumber;
+
+    return sendMessage(audioAddress, myData);
+}
+
+bool Board::PlaySong(AudioEnums::SONGS song)
+{
+    struct_message_all myData;
+    memset(&myData, 0, sizeof(myData));
+    myData.id = 6;
+    myData.jc = trackNumber;
+
+    return sendMessage(audioAddress, myData);
 }
 
 void Board::wipeResults()
