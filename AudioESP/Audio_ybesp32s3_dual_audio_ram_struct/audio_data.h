@@ -121137,6 +121137,8 @@ const unsigned char sfxCJumpData[] PROGMEM =
 0x84, 0x00, 0x2C, 0xFF, 0x83, 0x00, 0x58, 0xFF, 0x73, 0x00, 0x88, 0xFF
 };
 
+const unsigned char sfxCLandData[] PROGMEM = {0x73};
+
 const unsigned int sfxSuccessLen = sizeof(sfxSuccessData);
 const unsigned int sfxFailLen = sizeof(sfxFailData);
 const unsigned int sfxPartialLen = sizeof(sfxPartialData);
@@ -121146,6 +121148,7 @@ const unsigned int sfxCalibLen = sizeof(sfxCalibData);
 const unsigned int sfxCStartLen = sizeof(sfxCStartData);
 const unsigned int sfxCEndLen = sizeof(sfxCEndData);
 const unsigned int sfxCJumpLen = sizeof(sfxCJumpData);
+const unsigned int sfxCLandLen = sizeof(sfxCLandData);
 
 const unsigned char sfxEmptyData[] PROGMEM = {0x52};
 const unsigned int sfxEmptyLen = sizeof(sfxEmptyData);
@@ -121169,7 +121172,8 @@ static const Sfx sfxList[] =
   {"calib",sfxCalibData, sfxCalibLen, 1000},
   {"cstart",sfxCStartData, sfxCStartLen, 1450},
   {"cend",sfxCEndData, sfxCEndLen, 1450},
-  {"cjump",sfxCJumpData, sfxCJumpLen, 1000}
+  {"cjump",sfxCJumpData, sfxCJumpLen, 1000},
+  {"cland",sfxCLandData, sfxCLandLen, 1}
 };
 
-const unsigned int sfxAmount = 10;
+const unsigned int sfxAmount = 11;

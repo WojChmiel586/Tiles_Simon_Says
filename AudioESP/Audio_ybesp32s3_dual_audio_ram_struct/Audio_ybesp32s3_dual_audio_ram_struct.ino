@@ -43,7 +43,7 @@ EncodedAudioStream bgStream(&bgFile,&bgDecoder);
 VolumeStream bgVolume(bgStream);
 
 int bgIndex = -1;
-const float bgVol = 1.0;
+float bgVol = 0.30;
 String currentPath;
 
 SfxVoice sfx_voices[2]; //Amount of Sound effcts that could play at once.
@@ -51,16 +51,7 @@ int totalSfxVoices = 2;
 //Acting as pointers
 int currentSfx = 0;
 
-//Sound Effects (Flash Memory-Based) Pointers so they can be changed
-MemoryStream* sfxMemoryStream;
-WAVDecoder* sfxDecoder;
-EncodedAudioStream* sfxStream;
-VolumeStream* sfxVolume;
-ResampleStream* sfxResample;
-
-int sfxIndex = -1;
 bool isSfxPlaying = false;
-float sfxPitch = 1.0f; //Normal.
 float sfxVolValue = 0.70;
 
 //Sound Effect start and end times (Milliseconds).
@@ -104,8 +95,8 @@ uint8_t receiverAddress[] = { 0xEC, 0xDA, 0x3B, 0x95, 0xC5, 0x0C };
 //Global Variables to check what data has been received.
 int recvSfx;
 int recvBg;
-int recvBgVol = 50;
-int recvSfxVol = 50;
+int recvBgVol = 30;
+int recvSfxVol = 70;
 bool dataReceived = false; 
 
 //Runs when data has been received from ESP
@@ -218,7 +209,7 @@ void setup() {
 
   // Set up background music, background music comes from the SD Card because they're larger files, Have to be WAV.
   bgFile = SD.open("/m_intro.wav");
-  currentPath = "/m_disco02.wav";
+  currentPath = "/m_main_a.wav";
   if(!bgFile)
   {
     Serial.println("Background music missing.");
@@ -229,7 +220,7 @@ void setup() {
   //Starts background music volume, so it can be changed throughout
   bgVolume.setAudioInfo(info);
   bgVolume.begin();
-  bgVolume.setVolume(0.70); //Start at half volume (100% volume == 1)
+  bgVolume.setVolume(bgVol); //Start at half volume (100% volume == 1)
   bgIndex = mixer.add(bgVolume, 100);
   Serial.println("Background Music Start!");
   
@@ -394,7 +385,11 @@ void playSfx(int sfx_playing)
   SfxVoice &v = sfx_voices[currentSfx];
   v.active = true;
   mixer.setWeight(v.mixerIndex,0);
-  
+  v.volume->setVolume(sfxVolValue);
+  if(sfx_playing >= 4 && sfx_playing <= 6)
+  {
+    v.volume->setVolume(sfxVolValue*0.46);
+  }  
   const uint8_t* currentData = nullptr;
   size_t currentLen = 0;
   Serial.println(sfx_playing);
@@ -437,7 +432,11 @@ void playBg(int bg_playing, int looping)
   else
   {
     if(bg_playing < 0 || bg_playing >= totalAudioFiles) {return;}
-
+    bgVolume.setVolume(bgVol);
+    if(bg_playing == 3) //Whatever Value Disco02 (Simon Says Music) is in the Music list
+    {
+      bgVolume.setVolume(bgVol * 1.6);
+    }
     
     if(musicFiles[bg_playing].hasWav)
     {
@@ -633,9 +632,9 @@ void changeBgVol(int p_Vol)
     return;
   }
   Serial.println(p_Vol);
-  float newVolume = float(p_Vol) / 100; //Divide number by 100 for decimal.
-  Serial.println(newVolume);
-  bgVolume.setVolume(newVolume);
+  bgVol = float(p_Vol) / 100; //Divide number by 100 for decimal.
+  Serial.println(bgVol);
+  bgVolume.setVolume(bgVol);
 }
 
 void changeSfxVol(int p_Vol)
@@ -654,7 +653,6 @@ void changeSfxVol(int p_Vol)
   {
     sfx_voices[i].volume->setVolume(sfxVolValue);
   }
-  //sfxVolume->setVolume(sfxVolValue);
 }
 
 void scanAudioFiles() {
@@ -737,7 +735,7 @@ void listAllFiles() {
     Serial.printf("[%d] %s",j,sfxList[j].name);
     Serial.println();
   }
-  Serial.println("[10~16] Simon Says Notes");
+  Serial.println("[11~17] Simon Says Notes");
   Serial.println("\n===================================");
   Serial.println("Type a number to play from RAM and a name to play from SD:");
   Serial.println("Type 'list' to show all files again\n");
