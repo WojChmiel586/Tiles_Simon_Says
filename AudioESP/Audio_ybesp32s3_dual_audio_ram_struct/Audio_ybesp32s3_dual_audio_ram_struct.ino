@@ -28,15 +28,15 @@
 
 #define AUDIO_BUFFER_SIZE 1024
 
-//Defining Varaibles and Functions for Audio Mixer START
+// ------- Defining Varaibles and Functions for Audio Mixer ------
 
-//Audio Objects
+// ---- Audio Objects
 I2SStream i2s;
 InputMixer<int16_t> mixer;
 StreamCopy copier(i2s,mixer,AUDIO_BUFFER_SIZE);
-AudioInfo info(44100,2,16);
+AudioInfo info(44100,2,16); //Rate of the WAV Files
 
-//Background Music
+// ---- Background Music ----
 File bgFile;
 WAVDecoder bgDecoder;
 EncodedAudioStream bgStream(&bgFile,&bgDecoder);
@@ -46,11 +46,10 @@ int bgIndex = -1;
 float bgVol = 0.30;
 String currentPath;
 
+// ---- Sound effects ----
 SfxVoice sfx_voices[2]; //Amount of Sound effcts that could play at once.
 int totalSfxVoices = 2;
-//Acting as pointers
-int currentSfx = 0;
-
+int currentSfx = 0; //Acts as a pointer
 bool isSfxPlaying = false;
 float sfxVolValue = 0.70;
 
@@ -64,25 +63,25 @@ SoundEffect sounds[7]; //7 Max if each wav is 258kb (Total can't go over 2mb)
 //Debugging Menu
 String menu = "home";
 
-enum GameStates {MENU,JUMP,SIMON,CALIBRATION};
-GameStates currentGS = MENU;
+// ---- Game States if things are to be loaded within the code ----
+//enum GameStates {MENU,JUMP,SIMON,CALIBRATION};
+//GameStates currentGS = MENU;
 
-//Defining Varaibles and Functions for Audio Mixer END
+// ---- Audio Files structure 
 
 struct AudioFile {
   String name;      // Base name without extension
   String wavPath;   // Full path to WAV file (if exists)
-  //String mp3Path;   // Full path to MP3 file (if exists)
   bool hasWav;
-  //bool hasMp3;
 };
 
+//Total audio files within the SD card and one for just the music
 AudioFile audioFiles[100];
 int totalAudioFiles = 0;
-bool isPlaying = false;
-String serialBuffer = "";
 AudioFile musicFiles[15];
 int totalMusicFiles = 0;
+bool isPlaying = false;
+String serialBuffer = "";
 
 // ----  ESP  ----
 #include <WiFi.h>
@@ -136,22 +135,13 @@ void initVoices(SfxVoice &v)
 }
 
 
-// Initalisation
+// ---- Initalisation ----
 void setup() {
   Serial.begin(115200);
   WiFi.mode(WIFI_STA);
   delay(1000);
 
-  Serial.printf("Total heap: %d", ESP.getHeapSize());
-  Serial.println("");
-  Serial.printf("Free heap: %d", ESP.getFreeHeap());
-  Serial.println("");
-  Serial.printf("Total PSRAM: %d", ESP.getPsramSize());
-  Serial.println("");
-  Serial.printf("Free PSRAM: %d", ESP.getFreePsram());
-  Serial.println("");
-
-  // Initialize ESP-NOW
+  // ---- Initialize ESP-NOW
   if (esp_now_init() != ESP_OK) {
     Serial.println("Error initializing ESP-NOW");
     return;
@@ -172,7 +162,7 @@ void setup() {
     return;
   }
 
-  // Setup status LED
+  // ---- Setup status LED
   pinMode(STATUS_LED, OUTPUT);
   digitalWrite(STATUS_LED, LOW);
   
@@ -207,7 +197,9 @@ void setup() {
     delay(200);
   }
 
-  // Set up background music, background music comes from the SD Card because they're larger files, Have to be WAV.
+  // ---- Set up background music --
+  //background music comes from the SD Card because they're larger files,
+  // ---- Have to be WAV ---- or it wont work with the mixer.
   bgFile = SD.open("/m_intro.wav");
   currentPath = "/m_main_a.wav";
   if(!bgFile)
@@ -220,12 +212,13 @@ void setup() {
   //Starts background music volume, so it can be changed throughout
   bgVolume.setAudioInfo(info);
   bgVolume.begin();
-  bgVolume.setVolume(bgVol); //Start at half volume (100% volume == 1)
-  bgIndex = mixer.add(bgVolume, 100);
+  bgVolume.setVolume(bgVol);
+  bgIndex = mixer.add(bgVolume, 100); //Weight of mixer 0 = off, 100 = on.
   Serial.println("Background Music Start!");
   
 }
-void audioSetup() {
+void audioSetup() 
+{
   // Configure I2S Settings
   auto i2s_config = i2s.defaultConfig(TX_MODE);
   i2s_config.pin_bck = I2S_BCLK;
@@ -244,13 +237,15 @@ void audioSetup() {
   {
     initVoices(sfx_voices[i]);
   } 
-  //Initiatate PSRAM sound effects if all are being loaded / unloaded from PSRAM
+  // ---- Initiatate PSRAM sound effects if all are being loaded / unloaded from PSRAM
   // for(int i=0; i < numSounds; i++)
   // {
   //   sounds[i].data = nullptr;
   //   sounds[i].length = 0;
   // }
 
+  //Since no other sounds are going to be loaded into the PSRAM
+  //This loads the ones needed.
   loadSound("/sfxS1.wav",sounds[0]);
   loadSound("/sfxS2.wav",sounds[1]);
   loadSound("/sfxS3.wav",sounds[2]);
@@ -264,6 +259,7 @@ void loop() {
   //Keeps audio running
   copier.copy();
 
+  // If the ESP has recieved a signal
   if(dataReceived)
   {
     Serial.printf("Sfx Data received: ");
@@ -309,10 +305,13 @@ void loop() {
     //Serial.println("BG music ended");
     playBg(-1,1); //Not passing in new audio (-1), confirmed its looping instead (1)
   }
+
   //Deactivating any sound effects that have ended
   for(int i = 0; i < totalSfxVoices; i++)
   {
     SfxVoice &v = sfx_voices[i];
+    //Has an end time which is slightly shorter than the file's actual duration.
+    //This is done to avoid the click that appears when closing a file.
     if(v.active && millis() - v.startTime > v.endTime)
     {
       v.active = false;
@@ -336,64 +335,23 @@ void loop() {
 
 }
 
-void loadGameSounds(GameStates current)
-{
-  currentGS = current;
-  freeSounds();
-  switch (current)
-  {
-    case MENU:
-    //Selection Jinggles 
-      loadSound("/sfxJump.wav",sounds[0]); //Jump Rope
-      loadSound("/sfxSimon.wav",sounds[1]); //Simon Says
-      loadSound("/sfxCalib.wav",sounds[2]); //Calibrations / Exercise
-    break;
-    case JUMP: 
-    //Success, partial and fail
-      loadSound("/sfxSuccess.wav",sounds[0]); //Success
-      loadSound("/sfxPartial.wav",sounds[1]); //Partial
-      loadSound("/sfxFail.wav",sounds[2]); //Fail
-    break;
-    case SIMON: 
-    //Simon Says incrementing Sounds
-      loadSound("/sfxS1.wav",sounds[0]);
-      loadSound("/sfxS2.wav",sounds[1]);
-      loadSound("/sfxS3.wav",sounds[2]);
-      loadSound("/sfxS4.wav",sounds[3]);
-      loadSound("/sfxS5.wav",sounds[4]);
-      loadSound("/sfxS6.wav",sounds[5]);
-      loadSound("/sfxS7.wav",sounds[6]);
-    break;
-    case CALIBRATION: 
-    //Sound effects for all exercises
-      loadSound("/sfxS1.wav",sounds[0]); //Start Exercise
-      loadSound("/sfxS1.wav",sounds[1]); //End Exercise
-      loadSound("/sfxS1.wav",sounds[2]); //Jump Indication
-    break;
-  }
-  Serial.printf("Total PSRAM: %d", ESP.getPsramSize());
-  Serial.println("");
-  Serial.printf("Free PSRAM: %d", ESP.getFreePsram());
-  Serial.println("");
-  Serial.printf("Largest block: %u\n",
-              heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM));
-}
-
 void playSfx(int sfx_playing)
 {
   //Resets Variables for reasignment
   SfxVoice &v = sfx_voices[currentSfx];
   v.active = true;
   mixer.setWeight(v.mixerIndex,0);
+
   v.volume->setVolume(sfxVolValue);
-  if(sfx_playing >= 4 && sfx_playing <= 6)
+  //Manual adjustment of volume for louder sound effects
+  if(sfx_playing >= 4 && sfx_playing <= 6) // Selecting game nosises quite loud so this dampens it
   {
     v.volume->setVolume(sfxVolValue*0.46);
   }  
+  // Empty variables to hold the new sound effect info
   const uint8_t* currentData = nullptr;
   size_t currentLen = 0;
-  Serial.println(sfx_playing);
-  Serial.println("");
+
   //If playing from Flash Memory
   if(sfx_playing <= sfxAmount)
   {
@@ -401,22 +359,23 @@ void playSfx(int sfx_playing)
     currentLen = sfxList[sfx_playing].len;
     v.endTime = sfxList[sfx_playing].ms;
   }
-  //If playing from PSRAM Simon Says Tiles
-  if(sfx_playing >= 10 && sfx_playing <= 16)
+  //If playing from PSRAM
+  if(sfx_playing >= 11 && sfx_playing <= 17)
   {
-    Serial.println(sfx_playing);
-    Serial.println("Playing Simon Say sound effect");
     currentData = sounds[sfx_playing-10].data;
     currentLen = sounds[sfx_playing-10].length;
     v.endTime = 1500;
   }
-  
+  // ---- Deleting to avoid memory leaking / stacking up of the pointers
+  //They have to be pointers as the version of Audio Tool that's being used
+  //Doesn't have the functions to allow different methods of changing sound effects.
   delete v.memory;
   v.memory = new MemoryStream((uint8_t*)currentData,currentLen,true,FLASH_RAM);
 
   v.stream->begin();
   v.decoder -> begin();
 
+  //Restarting timer
   v.startTime = millis();
   mixer.setWeight(v.mixerIndex,100);
   isSfxPlaying = true;
@@ -425,19 +384,22 @@ void playSfx(int sfx_playing)
 void playBg(int bg_playing, int looping)
 {
   String pathToPlay;
+  // Looping music
   if(looping)
   {
     pathToPlay = currentPath;
   }
+  // Changing Music
   else
   {
     if(bg_playing < 0 || bg_playing >= totalAudioFiles) {return;}
     bgVolume.setVolume(bgVol);
-    if(bg_playing == 3) //Whatever Value Disco02 (Simon Says Music) is in the Music list
+    //Adjusting volume if a quieter track is playing
+    if(bg_playing == 3) //Whatever Value Simon Says Music is in the Music list
     {
       bgVolume.setVolume(bgVol * 1.6);
     }
-    
+    //If the file being played exists and has as WAV file
     if(musicFiles[bg_playing].hasWav)
     {
       pathToPlay = musicFiles[bg_playing].wavPath;
@@ -449,16 +411,15 @@ void playBg(int bg_playing, int looping)
       return; 
     }
   }
-  
-  mixer.setWeight(bgIndex,0);
+  //Changing the track in the mixer.
+  mixer.setWeight(bgIndex,0); //Have to mute to avoid clicks or distortion whilst changing
   File newFile = SD.open(pathToPlay.c_str());
   if(!newFile){Serial.println("Missing Bg Music");}
 
   bgFile.close();
   bgFile = newFile;
-
+  //Have to begin and end stream / decoder to avoid distortion
   bgDecoder.begin();
-
   bgStream.end();
   bgStream = EncodedAudioStream(&bgFile, &bgDecoder);
   bgStream.begin();
@@ -469,7 +430,7 @@ void playBg(int bg_playing, int looping)
 
 void processSerialCommand(String command) {
   command.trim();
-  //Serial.println("Start of Process ----------------------"); //Debugging
+  //If there's no command
   if (command.length() == 0) return;
   // Check if it's the list command
   if (command.equalsIgnoreCase("list")) {
@@ -505,33 +466,41 @@ void processSerialCommand(String command) {
     }
   }
   int fileIndex = -1;
+
+  // ----- This is a menu system for the Serial Monitor -----
+  // "home" is where you can call sound effects (Number) or the background track (Name).
+  // "bg" is where you adjust the baackground's volume, type "back" to return to home.
+  // "sfx" is where you adjust the sound effect's volume, type "back" to return to home.
+  // "bgself" is where you can select the background track via numbers, type "back" to return to home.
+  // This can all be removed / simplified once the final ESP is ready as this has been for testing purposes
+  // And is only used with the Serial Monitor.
   if(menu == "home")
   {
     // --- Changing Serial Input Menu ---
-    if (command.equalsIgnoreCase("bg")) 
-    {
-      menu = "bg";
-      Serial.println("Now in BG Menu");
-      return;
-    }
-    if (command.equalsIgnoreCase("sfx")) 
-    {
-      menu = "sfx";
-      Serial.println("Now in SFX Menu");
-      return;
-    }
-    if (command.equalsIgnoreCase("bgsel")) 
-    {
-      menu = "bgsel";
-      Serial.println("Now in bg selection Menu");
-      return;
-    }
+      if (command.equalsIgnoreCase("bg")) 
+      {
+        menu = "bg";
+        Serial.println("Now in BG Menu");
+        return;
+      }
+      if (command.equalsIgnoreCase("sfx")) 
+      {
+        menu = "sfx";
+        Serial.println("Now in SFX Menu");
+        return;
+      }
+      if (command.equalsIgnoreCase("bgsel")) 
+      {
+        menu = "bgsel";
+        Serial.println("Now in bg selection Menu");
+        return;
+      }
     //For testing purposes, a number is a sound effect, words is the background music
     if(isNumber)
     {
       fileIndex = command.toInt();
       //Checks if there's a possible sound effect in the number
-      if(fileIndex > 16) 
+      if(fileIndex > sfxAmount + 7) // + 7 for the slots in PSRAM. 
       {
         Serial.println("No SFX fit that number");
         return; 
@@ -556,7 +525,7 @@ void processSerialCommand(String command) {
     }
     else
     {
-      //Finds the background music =
+      //Finds the background music
       for (int i = 0; i < totalMusicFiles; i++)
       {
         if(musicFiles[i].name.equalsIgnoreCase(command))
@@ -573,8 +542,6 @@ void processSerialCommand(String command) {
       playBg(fileIndex,0);
     }
   }
-  // ---- Changing Background and Sound Effect Volumes through Serial Monitor
-  // ---- you have to type back to play sound effects in home menu
   else if(menu == "bg")
   {
     if(isNumber)
@@ -620,6 +587,7 @@ void processSerialCommand(String command) {
     }
     playBg(fileIndex,0);
   }
+  // ---- This is the end of the serial monitor menu system ----
   return;
 }
 
@@ -631,24 +599,20 @@ void changeBgVol(int p_Vol)
     Serial.println("Invalid Volume Number, has to be between 0 and 100.");
     return;
   }
-  Serial.println(p_Vol);
   bgVol = float(p_Vol) / 100; //Divide number by 100 for decimal.
-  Serial.println(bgVol);
   bgVolume.setVolume(bgVol);
 }
 
 void changeSfxVol(int p_Vol)
 {
-  //Change Background Volume
+  //Change Sound Effect Volume
   if(p_Vol < 0 || p_Vol > 100)
   {
     Serial.println("Invalid Volume Number, has to be between 0 and 100.");
     return;
   }
-  Serial.println(p_Vol);
-  float newVolume = float(p_Vol) / 100; //Divide number by 100 for decimal.
-  Serial.println(newVolume);
-  sfxVolValue = newVolume;
+  sfxVolValue = float(p_Vol) / 100; //Divide number by 100 for decimal.
+  //Change volume for all sound effects in list
   for (int i = 0; i < totalSfxVoices; i++)
   {
     sfx_voices[i].volume->setVolume(sfxVolValue);
@@ -663,14 +627,17 @@ void scanAudioFiles() {
   }
   
   totalAudioFiles = 0;
+  //Makes sure the first spot is empty for signal receival. 
   musicFiles[0].name = "Empty";
   musicFiles[0].hasWav = false;
   musicFiles[0].wavPath = "";
   totalMusicFiles = 1;
+
   File file = root.openNextFile();
   
   while (file) {
     String fileName = String(file.name());
+    //Checks if the current file is one for background music
     bool currentMus = false;
     if(fileName.charAt(0) == 'm')
     {
@@ -680,35 +647,31 @@ void scanAudioFiles() {
     //Adds file to audio IF its a WAV file. 
     if (!file.isDirectory() && (fileName.endsWith(".wav") || fileName.endsWith(".WAV")))
     {
-      
       // Get base name without extension
       String baseName = fileName;
       int lastDot = baseName.lastIndexOf('.');
       if (lastDot > 0) {
         baseName = baseName.substring(0, lastDot);
       }
-      
-      // Determine if it's WAV or MP3
-      bool isWav = fileName.endsWith(".wav") || fileName.endsWith(".WAV");
+
       String fullPath = "/" + fileName;
      
       // Create new entry
       if (totalAudioFiles < 100) 
       {
+        //Adds it to list of all WAV files in SD card
         audioFiles[totalAudioFiles].name = baseName;
-        if (isWav) 
-        {
-          audioFiles[totalAudioFiles].hasWav = true;
-          audioFiles[totalAudioFiles].wavPath = fullPath;
-          if(currentMus)
-          {
-            musicFiles[totalMusicFiles].name = baseName;
-            musicFiles[totalMusicFiles].hasWav = true;
-            musicFiles[totalMusicFiles].wavPath = fullPath;
-            totalMusicFiles++;
-          }
-        }
+        audioFiles[totalAudioFiles].hasWav = true;
+        audioFiles[totalAudioFiles].wavPath = fullPath;
         totalAudioFiles++;
+        //If it's background music, adds it to the music list.
+        if(currentMus)
+        {
+          musicFiles[totalMusicFiles].name = baseName;
+          musicFiles[totalMusicFiles].hasWav = true;
+          musicFiles[totalMusicFiles].wavPath = fullPath;
+          totalMusicFiles++;
+        }
       }
     }
     
@@ -720,9 +683,9 @@ void scanAudioFiles() {
 }
 
 void listAllFiles() {
-  Serial.println("\n===== AUDIO FILES ON SD CARD =====");
+  Serial.println("\n===== MUSIC FILES ON SD CARD =====");
   Serial.printf("Total files: %d\n\n", totalMusicFiles);
-  
+  //Lists Music Files on SD Card
   for (int i = 0; i < totalMusicFiles; i++) {
     Serial.printf("[%d] %s", i, musicFiles[i].name.c_str()); //Change musicFiles to audioFiles to display all files on the SD card
     Serial.print(" (WAV)");
@@ -730,6 +693,7 @@ void listAllFiles() {
   }
   Serial.println("\n===== SOUND EFFECTS ON FLASH MEMORY / PSRAM =====");
   Serial.printf("Total files: %d\n\n", sfxAmount);
+  //Lists Sound Effects within Flash Memory
   for (int j = 0; j < sfxAmount; j++)
   {
     Serial.printf("[%d] %s",j,sfxList[j].name);
@@ -740,6 +704,9 @@ void listAllFiles() {
   Serial.println("Type a number to play from RAM and a name to play from SD:");
   Serial.println("Type 'list' to show all files again\n");
 }
+
+
+// ------- All code bellow is for loading sound effect to PSRAM ------
 
 //Load sounds from SD Card to PSRAM
 bool loadSound(const char *filename, SoundEffect &sound)
@@ -784,3 +751,46 @@ void freeSounds()
   }
 }
 
+
+void loadGameSounds(GameStates current)
+{
+  currentGS = current;
+  freeSounds();
+  switch (current)
+  {
+    case MENU:
+    //Selection Jinggles 
+      loadSound("/sfxJump.wav",sounds[0]); //Jump Rope
+      loadSound("/sfxSimon.wav",sounds[1]); //Simon Says
+      loadSound("/sfxCalib.wav",sounds[2]); //Calibrations / Exercise
+    break;
+    case JUMP: 
+    //Success, partial and fail
+      loadSound("/sfxSuccess.wav",sounds[0]); //Success
+      loadSound("/sfxPartial.wav",sounds[1]); //Partial
+      loadSound("/sfxFail.wav",sounds[2]); //Fail
+    break;
+    case SIMON: 
+    //Simon Says incrementing Sounds
+      loadSound("/sfxS1.wav",sounds[0]);
+      loadSound("/sfxS2.wav",sounds[1]);
+      loadSound("/sfxS3.wav",sounds[2]);
+      loadSound("/sfxS4.wav",sounds[3]);
+      loadSound("/sfxS5.wav",sounds[4]);
+      loadSound("/sfxS6.wav",sounds[5]);
+      loadSound("/sfxS7.wav",sounds[6]);
+    break;
+    case CALIBRATION: 
+    //Sound effects for all exercises
+      loadSound("/sfxS1.wav",sounds[0]); //Start Exercise
+      loadSound("/sfxS1.wav",sounds[1]); //End Exercise
+      loadSound("/sfxS1.wav",sounds[2]); //Jump Indication
+    break;
+  }
+  Serial.printf("Total PSRAM: %d", ESP.getPsramSize());
+  Serial.println("");
+  Serial.printf("Free PSRAM: %d", ESP.getFreePsram());
+  Serial.println("");
+  Serial.printf("Largest block: %u\n",
+  heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM));
+}
