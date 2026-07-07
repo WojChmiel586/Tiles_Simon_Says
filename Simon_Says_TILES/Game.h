@@ -3,6 +3,7 @@
 #include "Board.h"
 #include <vector>
 #include <memory>
+#include "AudioEnums.h"
 
 
 class Game

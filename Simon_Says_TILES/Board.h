@@ -17,35 +17,35 @@ public:
     Board();
 
     //Initialisation functions
-    void begin(int ledPins[]);
-    void assignColours();
+    void                begin(int ledPins[]);
+    void                assignColours();
 
     //ESP-NOW setup
-    bool initESPNow();
-    bool addPeer(const uint8_t* macAddress);
-    void setPeerAddresses(const uint8_t* buttons, const uint8_t* audio, const uint8_t* results);
+    bool                initESPNow();
+    bool                addPeer(const uint8_t* macAddress);
+    void                setPeerAddresses(const uint8_t* buttons, const uint8_t* audio, const uint8_t* results);
 
     //ESP-NOW sending
-    bool sendMessage(const uint8_t* macAddress, struct_message_all& message);
-    bool sendToAudio(struct_message_all message);
-    bool sendToAudio(int trackNumber = 0, int SfxNumber = 0);
-    bool sendToLaptop(struct_message_all message);
-    bool sendToResults(struct_message_all message);
+    bool                sendMessage(const uint8_t* macAddress, struct_message_all& message);
+    bool                sendToAudio(struct_message_all message);
+    bool                sendToAudio(int trackNumber = 0, int SfxNumber = 0);
+    bool                sendToLaptop(struct_message_all message);
+    bool                sendToResults(struct_message_all message);
 
     //Static callbacks for ESP-NOW
-    static void onDataSent(const esp_now_send_info_t* send_info, esp_now_send_status_t status);
-    static void onDataReceived(const uint8_t *mac_addr, const uint8_t *incomingData, int len);
+    static void         onDataSent(const esp_now_send_info_t* send_info, esp_now_send_status_t status);
+    static void         onDataReceived(const uint8_t *mac_addr, const uint8_t *incomingData, int len);
 
     //Recieve data
-    bool hasNewData();
-    void processRecievedData();
-    void updateFromESPNOW(struct_message_all boards[]);
+    bool                hasNewData();
+    void                processRecievedData();
+    void                updateFromESPNOW(struct_message_all boards[]);
     struct_message_all* getStructFront() {return boardsStructFront; };
-    void wipeResults();
+    void                wipeResults();
 
     //AUDIO
-    bool PlaySFX(AudioEnums::SFX sfx);
-    bool PlaySong(AudioEnums::SONGS song);
+    bool                PlaySFX(Audio::SFX sfx, int volume = 101);
+    bool                PlaySong(Audio::SONGS song, int volume = 101);
 
 
     //Tile interaction

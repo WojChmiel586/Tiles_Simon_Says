@@ -48,6 +48,7 @@ void Calibration::Init()
 void Calibration::HandleInput(int input)
 {
     setExercise(input);
+    board.PlaySFX(Audio::SFX::SFX_7);
 }
 
 bool Calibration::isDone() const
@@ -307,6 +308,7 @@ void Calibration::runCalib2(unsigned long now)
     switch (balState) {
         case BAL1PREP:
             board.clearAll();
+            board.PlaySFX(Audio::SFX::SFX_7);
             prepCalib4();
             startMillis     = now;
             balanceScore    = 0;

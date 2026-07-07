@@ -36,9 +36,9 @@ Game* currentGame = nullptr;
 //   1 → Calibration (selects exercise via setExercise, then Init)
 //   2 → JumpRope
 //   3 → SimonSays
+static const int BUTTON_CALIBRATION = 1;  // switches to calibration mode; exercise set by 91,92,93,94,95,96,97,98
 static const int BUTTON_JUMPROPE    = 2;
 static const int BUTTON_SIMONSAYS   = 3;
-static const int BUTTON_CALIBRATION = 1;  // switches to calibration mode; exercise set by 91,92,93,94,95,96,97,98
 
 int  lastButtonValue = 0;   // previous frame's .b — for edge detection
 
@@ -127,18 +127,21 @@ void loop()
       else if (buttonValue == BUTTON_JUMPROPE)
       {
         Serial.println("Switching to JumpRope");
+        board.PlaySFX(Audio::SFX::SFX_5);
         currentGame = jumpRope;
         currentGame->Init();
       }
       else if (buttonValue == BUTTON_SIMONSAYS)
       {
         Serial.println("Switching to SimonSays");
+        board.PlaySFX(Audio::SFX::SFX_4);
         currentGame = simonSays;
         currentGame->Init();
       }
       else if (buttonValue == BUTTON_CALIBRATION)
       {
         Serial.println("Switching to Calibration");
+        board.PlaySFX(Audio::SFX::SFX_6);
         currentGame = calibration;
         static_cast<Calibration*>(calibration)->setExercise(91);
         currentGame->Init();

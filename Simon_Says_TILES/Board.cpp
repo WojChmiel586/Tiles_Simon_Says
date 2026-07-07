@@ -177,22 +177,23 @@ void Board::processRecievedData()
 
 
 //AUDIO
-bool Board::PlaySFX(AudioEnums::SFX sfx)
+bool Board::PlaySFX(Audio::SFX sfx, int volume)
 {
     struct_message_all myData;
     memset(&myData, 0, sizeof(myData));
     myData.id = 6;
-    myData.js = SfxNumber;
+    myData.js = (int)sfx;
+    myData.dA = volume;
 
     return sendMessage(audioAddress, myData);
 }
 
-bool Board::PlaySong(AudioEnums::SONGS song)
+bool Board::PlaySong(Audio::SONGS song, int volume)
 {
     struct_message_all myData;
     memset(&myData, 0, sizeof(myData));
     myData.id = 6;
-    myData.jc = trackNumber;
+    myData.jc = (int)song;
 
     return sendMessage(audioAddress, myData);
 }
