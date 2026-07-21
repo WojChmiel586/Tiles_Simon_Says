@@ -96,6 +96,7 @@ int recvSfx;
 int recvBg;
 int recvBgVol = 30;
 int recvSfxVol = 70;
+int recvBgLooping = 0;
 bool dataReceived = false; 
 
 //Runs when data has been received from ESP
@@ -110,6 +111,7 @@ void OnDataRecv(const esp_now_recv_info_t *info, const uint8_t *incomingData, in
   recvBg = myResults.jc; //Gives number of background to be played.
   recvBgVol = myResults.sd; //Gives number for background volume to change to (1 to 101) 0 Means the volume isn't changing 
   recvSfxVol = myResults.dA; //Gives number for sfx volume to change to (1 to 101) 0 Means the volume isn't changing
+  recvBgLooping = myResults.dB; //Gives true or false if needing to cut to silence afterwards. (1 = cut to silence)
   dataReceived = true;
 }
 
@@ -237,22 +239,6 @@ void audioSetup()
   {
     initVoices(sfx_voices[i]);
   } 
-  // ---- Initiatate PSRAM sound effects if all are being loaded / unloaded from PSRAM
-  // for(int i=0; i < numSounds; i++)
-  // {
-  //   sounds[i].data = nullptr;
-  //   sounds[i].length = 0;
-  // }
-
-  //Since no other sounds are going to be loaded into the PSRAM
-  //This loads the ones needed.
-  loadSound("/sfxS1.wav",sounds[0]);
-  loadSound("/sfxS2.wav",sounds[1]);
-  loadSound("/sfxS3.wav",sounds[2]);
-  loadSound("/sfxS4.wav",sounds[3]);
-  loadSound("/sfxS5.wav",sounds[4]);
-  loadSound("/sfxS6.wav",sounds[5]);
-  loadSound("/sfxS7.wav",sounds[6]);
 }
 
 void loop() {
@@ -293,7 +279,7 @@ void loop() {
     if(recvBg >= 1 && recvBg < totalMusicFiles)
     {
       Serial.println("Background Change.");
-      playBg(recvBg,0);
+      playBg(recvBg,0,recvBgLooping);
     }
     
     dataReceived = false;
@@ -303,7 +289,7 @@ void loop() {
   if(!bgFile.available() || bgFile.available() < 2048)
   {
     //Serial.println("BG music ended");
-    playBg(-1,1); //Not passing in new audio (-1), confirmed its looping instead (1)
+    playBg(-1,1,0); //Not passing in new audio (-1), confirmed its looping instead (1)
   }
 
   //Deactivating any sound effects that have ended
@@ -381,7 +367,7 @@ void playSfx(int sfx_playing)
   isSfxPlaying = true;
 }
 
-void playBg(int bg_playing, int looping)
+void playBg(int bg_playing, int looping, int cutting)
 {
   String pathToPlay;
   // Looping music
@@ -397,7 +383,7 @@ void playBg(int bg_playing, int looping)
     //Adjusting volume if a quieter track is playing
     if(bg_playing == 3) //Whatever Value Simon Says Music is in the Music list
     {
-      bgVolume.setVolume(bgVol * 1.6);
+      bgVolume.setVolume(bgVol * 1.8);
     }
     //If the file being played exists and has as WAV file
     if(musicFiles[bg_playing].hasWav)
@@ -409,6 +395,15 @@ void playBg(int bg_playing, int looping)
     {
       Serial.println("Error: No Valid Audio File Found.");
       return; 
+    }
+    //What the music will loop round to afterwards.
+    if(bg_playing == 1)
+    {
+      currentPath = "/m_main_a.wav";
+    }
+    if(cutting == 1)
+    {
+      currentPath = "/m_silence.wav";
     }
   }
   //Changing the track in the mixer.
@@ -539,7 +534,7 @@ void processSerialCommand(String command) {
         Serial.printf("File '%s' not found. Type 'list' to see all files. \n", command.c_str());
         return;
       }
-      playBg(fileIndex,0);
+      playBg(fileIndex,0,0);
     }
   }
   else if(menu == "bg")
@@ -585,7 +580,7 @@ void processSerialCommand(String command) {
       Serial.println("No BG fit that number");
       return; 
     }
-    playBg(fileIndex,0);
+    playBg(fileIndex,0,0);
   }
   // ---- This is the end of the serial monitor menu system ----
   return;
@@ -699,98 +694,7 @@ void listAllFiles() {
     Serial.printf("[%d] %s",j,sfxList[j].name);
     Serial.println();
   }
-  Serial.println("[11~17] Simon Says Notes");
   Serial.println("\n===================================");
   Serial.println("Type a number to play from RAM and a name to play from SD:");
   Serial.println("Type 'list' to show all files again\n");
-}
-
-
-// ------- All code bellow is for loading sound effect to PSRAM ------
-
-//Load sounds from SD Card to PSRAM
-bool loadSound(const char *filename, SoundEffect &sound)
-{  
-  //Open Sound Effect from files
-  File file = SD.open(filename);
-  if(!file)
-  {
-    Serial.println(filename);
-    Serial.printf("Couldn't open %s\n", filename);
-    return false;
-  }
-
-  //Allocate the size and data of file in a form that can be stored in PSRAM
-  sound.length = file.size();
-  sound.data = (uint8_t*)heap_caps_malloc(sound.length,MALLOC_CAP_SPIRAM);
-
-  if(sound.data == nullptr)
-  {
-    Serial.printf("Couldn't allocat %u bytes\n", sound.length);
-    file.close();
-    return false;
-  }
-
-  file.read(sound.data, sound.length);
-  file.close();
-
-  Serial.printf("Loaded %s (%u bytes)\n", filename, sound.length);
-  return true;
-}
-
-void freeSounds()
-{
-  for(int i = 0; i < numSounds; i++)
-  {
-    if(sounds[i].data)
-    {
-      free(sounds[i].data);
-      sounds[i].data = nullptr;
-      sounds[i].length = 0;
-    }
-  }
-}
-
-
-void loadGameSounds(GameStates current)
-{
-  currentGS = current;
-  freeSounds();
-  switch (current)
-  {
-    case MENU:
-    //Selection Jinggles 
-      loadSound("/sfxJump.wav",sounds[0]); //Jump Rope
-      loadSound("/sfxSimon.wav",sounds[1]); //Simon Says
-      loadSound("/sfxCalib.wav",sounds[2]); //Calibrations / Exercise
-    break;
-    case JUMP: 
-    //Success, partial and fail
-      loadSound("/sfxSuccess.wav",sounds[0]); //Success
-      loadSound("/sfxPartial.wav",sounds[1]); //Partial
-      loadSound("/sfxFail.wav",sounds[2]); //Fail
-    break;
-    case SIMON: 
-    //Simon Says incrementing Sounds
-      loadSound("/sfxS1.wav",sounds[0]);
-      loadSound("/sfxS2.wav",sounds[1]);
-      loadSound("/sfxS3.wav",sounds[2]);
-      loadSound("/sfxS4.wav",sounds[3]);
-      loadSound("/sfxS5.wav",sounds[4]);
-      loadSound("/sfxS6.wav",sounds[5]);
-      loadSound("/sfxS7.wav",sounds[6]);
-    break;
-    case CALIBRATION: 
-    //Sound effects for all exercises
-      loadSound("/sfxS1.wav",sounds[0]); //Start Exercise
-      loadSound("/sfxS1.wav",sounds[1]); //End Exercise
-      loadSound("/sfxS1.wav",sounds[2]); //Jump Indication
-    break;
-  }
-  Serial.printf("Total PSRAM: %d", ESP.getPsramSize());
-  Serial.println("");
-  Serial.printf("Free PSRAM: %d", ESP.getFreePsram());
-  Serial.println("");
-  Serial.printf("Largest block: %u\n",
-  heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM));
 }
