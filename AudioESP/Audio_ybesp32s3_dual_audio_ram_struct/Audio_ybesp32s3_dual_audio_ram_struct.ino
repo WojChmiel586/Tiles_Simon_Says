@@ -433,24 +433,6 @@ void processSerialCommand(String command) {
     return;
   }
 
-  // //Load Audio if game has changed
-    // if (command.equalsIgnoreCase("menu")) {
-    //   loadGameSounds(MENU);
-    //   return;
-    // }
-    // else if (command.equalsIgnoreCase("jump")) {
-    //   loadGameSounds(JUMP);
-    //   return;
-    // }
-    // else if (command.equalsIgnoreCase("simon")) {
-    //   loadGameSounds(SIMON);
-    //   return;
-    // }
-    // else if (command.equalsIgnoreCase("calibration")) {
-    //   loadGameSounds(CALIBRATION);
-    //   return;
-  // }
-
   bool isNumber = true;
   for (unsigned int i = 0; i < command.length(); i++)
   {
