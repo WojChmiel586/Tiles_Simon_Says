@@ -30,7 +30,7 @@ void SimonSays::Init()
   player_sequence.reserve(10);
   game_sequence.emplace_back(13);
 
-  board.sendToAudio(6,9);
+  board.PlaySong(Audio::SONGS::SONG_3);
 }
 
 void SimonSays::Run(unsigned long dt)
@@ -134,11 +134,7 @@ void SimonSays::Run(unsigned long dt)
             prevSequenceLength = game_sequence.size();
 
             //Send Succcess sounds to audio ESP
-            struct_message_all audioMessage;
-            memset(&audioMessage, 0, sizeof(audioMessage));
-            audioMessage.id = 6;
-            audioMessage.js = 1;
-            board.sendToAudio(audioMessage);
+            board.PlaySFX(Audio::SFX::SFX_1);
 
             playerTurn = false;
             sequenceIdx = 0;
@@ -151,11 +147,7 @@ void SimonSays::Run(unsigned long dt)
           //CODE WHEN TILE DOESN'T MATCH SEQUENCE
           //SOME SORT OF INDICATION OF FAILURE
           //Send Succcess sounds to audio ESP
-          struct_message_all audioMessage;
-          memset(&audioMessage, 0, sizeof(audioMessage));
-          audioMessage.id = 6;
-          audioMessage.js = 3;
-          board.sendToAudio(audioMessage);
+          board.PlaySFX(Audio::SFX::SFX_3);
 
 
           finalScore = game_sequence.size();
@@ -173,6 +165,7 @@ void SimonSays::Run(unsigned long dt)
     //END STATE FOR THE GAME WHEN PLAYER FAILS
     if(playerFailed)
     {
+
       if (millis() - blinkTime >= blinkInterval && !gameEnd)
       {
         blinkTime = millis();
@@ -183,6 +176,7 @@ void SimonSays::Run(unsigned long dt)
         {
           board.clearAll();
           gameEnd = true;
+          board.PlaySong(Audio::SONGS::SONG_2);
         }
       }
     }

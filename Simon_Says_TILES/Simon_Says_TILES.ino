@@ -99,7 +99,7 @@ void setup() {
 }
 
 //LOOP
-void loop() 
+void loop()
 {
   unsigned long currentTime = millis();
   deltaTime     = (currentTime - previousTime);
@@ -109,8 +109,6 @@ void loop()
 
   // --- Read button input
   int buttonValue = board.getStructFront()[4].b;
-
-
 
   if (buttonValue != lastButtonValue)   // value changed this frame
   {

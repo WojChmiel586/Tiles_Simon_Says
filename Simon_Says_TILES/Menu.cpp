@@ -11,8 +11,7 @@ void Menu::Init()
 {
   board.clearAll();
   board.wipeResults();
-  board.sendToAudio(6,7);
-
+  board.PlaySong(Audio::SONGS::SONG_1);
 }
 
 void Menu::Run(unsigned long dt)

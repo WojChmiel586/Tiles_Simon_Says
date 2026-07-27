@@ -9,10 +9,19 @@
 #include "ESPNowStruct.h"
 #include "AudioEnums.h"
 
+
+/*
+TODO: 
+1. ADD A QUEUE FOR THE AUDIO MESSAGES TO THE AUDIO ESP TO ALLOW FOR DELAYED PLAYBACK
+2. FOR SONGS ADD A 0/1 VALUE FOR .dB IN SONG MESSAGE TO SET LOOPING TRUE OR FALSE
+*/
+
+
 class Board {
 public:
     static const int TILE_COUNT = 16;
     static const int weightThreshold = 500;
+    static const int GAME_BOARD_ID = 6;
 
     Board();
 
@@ -44,8 +53,9 @@ public:
     void                wipeResults();
 
     //AUDIO
-    bool                PlaySFX(Audio::SFX sfx, int volume = 101);
-    bool                PlaySong(Audio::SONGS song, int volume = 101);
+    bool                PlaySFX(Audio::SFX sfx, int volume = 70);
+    bool                PlaySong(Audio::SONGS song, int volume = 40, int isLooping = 0);
+    bool                StopSong();
 
 
     //Tile interaction
@@ -84,6 +94,7 @@ uint8_t resultsAddress[6];
 
 //Misc
 bool blinkFlag = false;
+bool songPlaying = false;
 
 
 

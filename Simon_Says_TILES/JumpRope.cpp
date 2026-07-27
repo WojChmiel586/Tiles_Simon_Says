@@ -35,10 +35,13 @@ void JumpRope::Init()
     landing          = 0;
     startMillis      = 0;
     feedbackMillis   = 0;
+    gameEnd = false;
     currentRopeState = GAMEPREP;
 
     board.clearAll();
     board.wipeResults();
+    board.PlaySFX(Audio::SFX::SFX_4);
+    board.PlaySong(Audio::SONGS::SONG_5);
 }
 
 
@@ -225,10 +228,22 @@ void JumpRope::Run(unsigned long dt)
             // Phase 1: wait 800 ms before showing lights (sound plays first)
             if (feedbackMillis == 0 && currentMillis - startMillis >= 800) {
                 uint32_t feedbackColor = Colours::white;
-                if      (jumpState == 1) feedbackColor = Colours::green;
-                else if (jumpState == 2) feedbackColor = Colours::yellow;
-                else if (jumpState == 3) feedbackColor = Colours::red;
+                if      (jumpState == 1)
+                { 
+                    feedbackColor = Colours::green;
+                    board.PlaySFX(Audio::SFX::SFX_1);
+                }
 
+                else if (jumpState == 2)
+                {
+                    feedbackColor = Colours::yellow;
+                    board.PlaySFX(Audio::SFX::SFX_2);
+                }    
+                else if (jumpState == 3)
+                {            
+                    feedbackColor = Colours::red;
+                    board.PlaySFX(Audio::SFX::SFX_3);
+                }
                 board.lightAllSection(feedbackColor, 14);
                 feedbackMillis = currentMillis; // start the display timer
             }
@@ -242,11 +257,12 @@ void JumpRope::Run(unsigned long dt)
                     // Set complete
                     jumpState = 0;
                     jumpCount = 0;
-                    board.lightAll(Colours::white); // endJump equivalent
+                    board.lightAllSection(Colours::white, 14);; // endJump equivalent
                     // We leave GAMEEND after another resultDelay so the white
                     // flash is visible; store time in startMillis for that.
                     startMillis      = currentMillis;
                     currentRopeState = GAMEEND;
+                    board.PlaySong(Audio::SONGS::SONG_9);
                 } else {
                     jumpState        = 0;
                     currentRopeState = GAMEPREP; // next jump
@@ -265,6 +281,8 @@ void JumpRope::Run(unsigned long dt)
             {
                 board.clearAll();
                 gameEnd = true;
+
+                board.PlaySong(Audio::SONGS::SONG_2);
             }
             break;
     }
@@ -287,15 +305,6 @@ void JumpRope::lightRow(Tile::LEDsections section, uint32_t color)
 // ESP-NOW helpers
 // =============================================================================
 
-void JumpRope::sendSoundMessage(int js, int jc)
-{
-    struct_message_all msg;
-    memset(&msg, 0, sizeof(msg));
-    msg.id = 6;       // game ESP
-    msg.jc = jc;
-    msg.js = js;      // 0=none, 1=good, 2=partial, 3=bad
-    board.sendToAudio(msg);
-}
 
 void JumpRope::sendResultMessage(int js, int jc)
 {

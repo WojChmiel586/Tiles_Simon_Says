@@ -48,7 +48,10 @@ void Calibration::Init()
 void Calibration::HandleInput(int input)
 {
     setExercise(input);
-    board.PlaySFX(Audio::SFX::SFX_7);
+    if(input != 98)
+    {
+        board.PlaySFX(Audio::SFX::SFX_7);
+    }
 }
 
 bool Calibration::isDone() const
@@ -252,6 +255,7 @@ void Calibration::runCalib1(unsigned long now)
     switch (marchState) {
         case MARCHPREP:
             board.clearAll();
+            board.PlaySong(Audio::SONGS::SONG_6);
             prepCalib4();
             startMillis = now;
             exCounter   = 0;
@@ -284,6 +288,7 @@ void Calibration::runCalib1(unsigned long now)
                 if (exCounter == 32) {
                     exCounter  = 0;
                     board.clearAll();
+                    board.PlaySFX(Audio::SFX::SFX_8);
                     marchState = MARCHDONE;
                 } else {
                     startMillis = now;
@@ -293,6 +298,8 @@ void Calibration::runCalib1(unsigned long now)
             break;
 
         case MARCHDONE:
+
+            board.StopSong();
             break;
     }
 }
@@ -308,7 +315,7 @@ void Calibration::runCalib2(unsigned long now)
     switch (balState) {
         case BAL1PREP:
             board.clearAll();
-            board.PlaySFX(Audio::SFX::SFX_7);
+            board.PlaySong(Audio::SONGS::SONG_7);
             prepCalib4();
             startMillis     = now;
             balanceScore    = 0;
@@ -498,19 +505,21 @@ void Calibration::runCalib2(unsigned long now)
                 Serial.println(balanceScore / 700.0f);
 
                 struct_message_all msg{};
-                msg.id = 6;
-                msg.fA = balanceScore / 700.0f;
+                msg.id = Board::GAME_BOARD_ID;
+                msg.fA = constrain(balanceScore / 700.0f, 0.0f,100.0f);
                 sendResult(msg);
 
                 balChecker      = 0;
                 balanceAchieved = 0;
                 balanceScore    = 0;
                 board.clearAll();
+                board.PlaySFX(Audio::SFX::SFX_8);
                 balState        = BALDONE;
             }
             break;
 
         case BALDONE:
+            board.StopSong();
             break;
     }
 }
@@ -526,6 +535,7 @@ void Calibration::runCalib3(unsigned long now)
     switch (sideState) {
         case SIDEPREP:
             board.clearAll();
+            board.PlaySong(Audio::SONGS::SONG_7);
             prepCalib4();
             startMillis      = now;
             balanceScoreSide = 0;
@@ -631,8 +641,8 @@ void Calibration::runCalib3(unsigned long now)
                     Serial.println(balanceScoreSide/200.0f);
 
                     struct_message_all msg{};
-                    msg.id = 6;
-                    msg.fB = balanceScoreSide / 200.0f;
+                    msg.id = Board::GAME_BOARD_ID;
+                    msg.fB = constrain(balanceScoreSide / 200.0f, 0.0f, 100.0f);
                     sendResult(msg);
 
                     balChecker       = 0;
@@ -640,6 +650,7 @@ void Calibration::runCalib3(unsigned long now)
                     exCounter        = 0;
                     balanceScoreSide = 0;
                     board.clearAll();
+                    board.PlaySFX(Audio::SFX::SFX_8);
                     sideState = SIDEDONE;
                 } else {
                     startMillis = now;
@@ -649,6 +660,7 @@ void Calibration::runCalib3(unsigned long now)
             break;
 
         case SIDEDONE:
+            board.StopSong();
             break;
     }
 }
@@ -684,6 +696,7 @@ void Calibration::runCalib4(unsigned long now)
         case STEP1_PREP:
             board.light(9,  Colours::cyan,    Tile::RIGHT_HALF);  // T10: right half, left colour
             board.light(10, Colours::magenta, Tile::LEFT_HALF);   // T11: left half, right colour
+            board.PlaySong(Audio::SONGS::SONG_4);
             startMillis = now;
             calibState  = STEP1_WAIT_PREP_OFF_LIGHTS_ON;
             break;
@@ -943,15 +956,17 @@ void Calibration::runCalib4(unsigned long now)
                     mobScore = (int)(mobScore / 0.32f);
 
                     struct_message_all msg{};
-                    msg.id = 6;
-                    msg.dA = maxcount / 32.0f;
+                    msg.id = Board::GAME_BOARD_ID;
+                    msg.dA = constrain(maxcount / 32.0f, 0.0f, 100.0f);
                     sendResult(msg);
 
                     exCounter  = 0;
                     maxcount   = 0;
                     mobScore   = 0;
                     board.clearAll();
+                    board.PlaySFX(Audio::SFX::SFX_8);                   
                     calibState = STEP16_DONE;
+
                 } else {
                     startMillis = now;
                     calibState  = STEP1_WAIT_PREP_OFF_LIGHTS_ON;  // second rep
@@ -960,6 +975,7 @@ void Calibration::runCalib4(unsigned long now)
             break;
 
         case STEP16_DONE:
+            board.StopSong();
             break;
     }
 }
@@ -978,6 +994,7 @@ void Calibration::runCalib5(unsigned long now)
             // T6 RIGHT_HALF cyan (stand left), T7 LEFT_HALF magenta (stand right)
             board.light(5, Colours::cyan,    Tile::RIGHT_HALF);
             board.light(6, Colours::magenta, Tile::LEFT_HALF);
+            board.PlaySong(Audio::SONGS::SONG_5);
             startMillis     = now;
             balanceScoreDyn = 0;
             balChecker      = 0;
@@ -989,8 +1006,7 @@ void Calibration::runCalib5(unsigned long now)
         case LUNGE1START:  // left foot back – stand on T7 (right), show lunge lines
             if (now - startMillis >= (unsigned long)(stepDelay * 2)) {
                 // Clear T6/T7 standing lights, show lunge pattern
-                board.clear(5);
-                board.clear(6);
+                board.clearAll();
                 // Stand on T7 (right), lunge lines on T10 and T14 (centre strip)
                 board.light(6,  Colours::magenta, Tile::LEFT_HALF);
                 board.light(9,  Colours::cyan,    Tile::CENTRE_LINE_VERTICAL);
@@ -1023,6 +1039,7 @@ void Calibration::runCalib5(unsigned long now)
             }
             if (now - startMillis >= (unsigned long)lungeDelay) {
                 clearLungeTiles();
+                board.clearAll();
                 board.light(5, Colours::cyan,    Tile::RIGHT_HALF);
                 board.light(6, Colours::magenta, Tile::LEFT_HALF);
                 balanceScoreDyn += balanceAchieved;
@@ -1036,8 +1053,7 @@ void Calibration::runCalib5(unsigned long now)
 
         case LUNGE2START:  // right foot back – stand on T6 (left), show lunge lines
             if (now - startMillis >= (unsigned long)(stepDelay * 2)) {
-                board.clear(5);
-                board.clear(6);
+                board.clearAll();
                 board.light(5,  Colours::cyan,    Tile::RIGHT_HALF);
                 board.light(10, Colours::magenta, Tile::CENTRE_LINE_VERTICAL);
                 board.light(14, Colours::magenta, Tile::CENTRE_LINE_VERTICAL);
@@ -1077,10 +1093,9 @@ void Calibration::runCalib5(unsigned long now)
                 {
                     //Score calculated as percentage of max possible result of 2500
                     PrintScore(balanceScoreDyn/25);
-                    
                     struct_message_all msg{};
                     msg.id = 6;
-                    msg.dB = balanceScoreDyn/25;
+                    msg.gA = constrain(balanceScoreDyn/25, 0.0f, 100.0f);
                     sendResult(msg);
 
                     balChecker      = 0;
@@ -1088,6 +1103,7 @@ void Calibration::runCalib5(unsigned long now)
                     exCounter       = 0;
                     balanceScoreDyn = 0;
                     board.clearAll();
+                    board.PlaySFX(Audio::SFX::SFX_8);
                     lungeState = LUNGEDONE;
                 } else {
                     balChecker      = 0;
@@ -1099,6 +1115,7 @@ void Calibration::runCalib5(unsigned long now)
             break;
 
         case LUNGEDONE:
+            board.StopSong();
             break;
     }
 }
@@ -1120,6 +1137,7 @@ void Calibration::runCalib6(unsigned long now)
     switch (squatState) {
         case SQUATPREP:
             prepCalib4();
+            board.PlaySong(Audio::SONGS::SONG_5);
             startMillis = now;
             squatScore  = 0;
             squatState  = SQUAT1START;
@@ -1275,20 +1293,22 @@ void Calibration::runCalib6(unsigned long now)
                 strengthScore += squatScore;
                 strengthScore  /= 6;
 
-                struct_message_all msg{};
-                msg.id = 6;
-                msg.gA = strengthScore;
-                sendResult(msg);
+                //struct_message_all msg{};
+                //msg.id = 6;
+                //msg.gA = strengthScore;
+                //sendResult(msg);
 
                 squatCounter  = 0;
                 squatScore    = 0;
                 strengthScore = 0;
                 board.clearAll();
+                board.PlaySFX(Audio::SFX::SFX_8);
                 squatState = SQUATDONE;
             }
             break;
 
         case SQUATDONE:
+            board.StopSong();
             break;
     }
 }
@@ -1314,6 +1334,7 @@ void Calibration::runCalib7(unsigned long now)
     switch (jumpState) {
         case JUMPPREP:
             board.clearAll();
+            board.PlaySong(Audio::SONGS::SONG_7);
             board.light(13, Colours::white, Tile::OUTLINE);
             board.light(14, Colours::white, Tile::OUTLINE);
 
@@ -1357,12 +1378,15 @@ void Calibration::runCalib7(unsigned long now)
         break;
 
         case JUMPSTART:  // 2 s dark, then orange = jump cue
+
             if (now - startMillis >= (unsigned long)(stepDelay * 5)) {
+
                 board.light(13, Colours::orange, Tile::OUTLINE);
                 board.light(14, Colours::orange, Tile::OUTLINE);
 
                 board.light(1, Colours::orange, Tile::OUTLINE);
                 board.light(2, Colours::orange, Tile::OUTLINE);
+                board.PlaySFX(Audio::SFX::SFX_9);
 
                 struct_message_all msg{};
                 msg.id = 6;
@@ -1384,6 +1408,7 @@ void Calibration::runCalib7(unsigned long now)
                 clearT14T15();
                 startMillis = now;
                 jumpState   = JUMPLANDPREP;
+                //board.PlaySFX(Audio::SFX::SFX_10);
             }
             break;
 
@@ -1397,7 +1422,9 @@ void Calibration::runCalib7(unsigned long now)
                 msg.id = 6; msg.gB = 444;
                 sendResult(msg);
             }
-            if (now - startMillis >= (unsigned long)(stepDelay / 5)) {
+            if (now - startMillis >= (unsigned long)(stepDelay / 5)) 
+            {
+
                 board.light(13, Colours::blue, Tile::OUTLINE);
                 board.light(14, Colours::blue, Tile::OUTLINE);
 
@@ -1431,7 +1458,9 @@ void Calibration::runCalib7(unsigned long now)
                 if (exCounter == 3) {
                     board.clearAll();
                     exCounter = 0;
+                    board.PlaySFX(Audio::SFX::SFX_8);
                     jumpState = JUMPDONE;
+
                 } else {
                     startMillis = now;
                     jumpState   = JUMPBALANCE;
@@ -1440,6 +1469,7 @@ void Calibration::runCalib7(unsigned long now)
             break;
 
         case JUMPDONE:
+            board.StopSong();
             break;
     }
 }
@@ -1454,6 +1484,8 @@ void Calibration::runCalibEnd(unsigned long now)
         case FINAL:
             // Kick off the sequential tile flash
             board.clearAll();
+            //TODO:: ADD NON LOOPING
+            board.PlaySong(Audio::SONGS::SONG_10, 40, 1);
             flashIdx    = 0;
             startMillis = now;
             finalState  = FINAL_FLASH;
@@ -1480,11 +1512,13 @@ void Calibration::runCalibEnd(unsigned long now)
             // Hold the full purple board for stepDelay*6 ms, then clear
             if (now - startMillis >= (unsigned long)(stepDelay * 6)) {
                 board.clearAll();
+                board.PlaySFX(Audio::SFX::SFX_8);
                 finalState = FINALDONE;
             }
             break;
 
         case FINALDONE:
+            board.StopSong();
             break;
     }
 }

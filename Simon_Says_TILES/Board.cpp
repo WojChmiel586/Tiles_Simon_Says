@@ -115,7 +115,7 @@ bool Board::sendToAudio(struct_message_all message)
 bool Board::sendToAudio(int trackNumber, int SfxNumber)
 {
     struct_message_all myData;
-    myData.id = 6;
+    myData.id = GAME_BOARD_ID;
     myData.jc = trackNumber;
     myData.js = SfxNumber;
 
@@ -181,21 +181,40 @@ bool Board::PlaySFX(Audio::SFX sfx, int volume)
 {
     struct_message_all myData;
     memset(&myData, 0, sizeof(myData));
-    myData.id = 6;
+    myData.id = GAME_BOARD_ID;
     myData.js = (int)sfx;
     myData.dA = volume;
 
     return sendMessage(audioAddress, myData);
 }
 
-bool Board::PlaySong(Audio::SONGS song, int volume)
+bool Board::PlaySong(Audio::SONGS song, int volume, int isLooping)
 {
     struct_message_all myData;
     memset(&myData, 0, sizeof(myData));
-    myData.id = 6;
+    myData.id = GAME_BOARD_ID;
     myData.jc = (int)song;
+    myData.sd = volume;
+    myData.dB = isLooping;
+    songPlaying = true;
 
     return sendMessage(audioAddress, myData);
+}
+
+bool Board::StopSong()
+{
+
+    if(songPlaying)
+    {
+        struct_message_all data;
+        memset(&myData, 0, sizeof(myData));
+        myData.id = GAME_BOARD_ID;
+        myData.jc = 2;
+        myData.sd = 40;
+        songPlaying = false;
+        return sendMessage(audioAddress, myData);
+    }
+    return false;
 }
 
 void Board::wipeResults()
